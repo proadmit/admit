@@ -1,15 +1,9 @@
-import { Metadata } from "next";
 import { auth } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { personalStatements } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { PersonalStatementEditor } from "@/components/personal-statement/editor";
-
-export const metadata: Metadata = {
-  title: "Personal Statement - NazranAdmit",
-  description: "Write and edit your college application personal statement",
-};
 
 export default async function PersonalStatementPage() {
   const { userId } = auth();

@@ -6,69 +6,69 @@ import { eq } from "drizzle-orm";
 import Stripe from "stripe";
 
 // Initialize Stripe with test key
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
   apiVersion: "2023-10-16",
 });
 
 export async function POST(req: Request) {
   try {
-    console.log("🔵 Starting payment intent creation...");
-
     const { userId: clerkId } = await auth();
     if (!clerkId) {
-      console.error("❌ No clerk ID found in auth");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    console.log("✅ Authenticated user with clerk ID:", clerkId);
 
     const user = await db.query.users.findFirst({
       where: eq(users.clerkId, clerkId),
     });
 
     if (!user) {
-      console.error("❌ No user found for clerk ID:", clerkId);
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
-    console.log("✅ Found user:", { id: user.id, plan: user.plan });
 
     const { priceId } = await req.json();
-    console.log("📦 Received price ID:", priceId);
-
-    // Calculate amount based on plan
-    const amount = priceId === "price_yearly_test" ? 11988 : 1499;
-    console.log("💰 Calculated amount:", amount);
-
-    // Create payment intent
-    console.log("🔄 Creating payment intent...");
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount,
-      currency: "usd",
-      metadata: {
-        userId: user.id,
-        priceId: priceId,
-      },
-      automatic_payment_methods: {
-        enabled: true,
-      },
-    });
-
-    if (!paymentIntent.client_secret) {
-      console.error("❌ No client secret in payment intent");
-      return NextResponse.json({ error: "Failed to create payment intent" }, { status: 500 });
+    if (!priceId) {
+      return NextResponse.json({ error: "Price ID is required" }, { status: 400 });
     }
 
-    console.log("✅ Payment intent created:", paymentIntent.id);
-    return NextResponse.json({ 
-      clientSecret: paymentIntent.client_secret,
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?canceled=true`,
+      metadata: {
+        userId: user.id,
+      },
     });
 
+    if (!session.url) {
+      return NextResponse.json({ error: "Failed to create checkout session" }, { status: 500 });
+    }
+
+    return NextResponse.json({ url: session.url });
   } catch (error) {
-    console.error("❌ Error in payment intent creation:", {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-    });
-    return NextResponse.json({ error: "Failed to create payment intent" }, { status: 500 });
+    if (error instanceof Error) {
+      console.error("❌ Error in checkout session creation:", {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      });
+    } else {
+      console.error("❌ Error in checkout session creation:", error);
+    }
+
+    return NextResponse.json(
+      { 
+        error: "Failed to create checkout session", 
+        details: error instanceof Error ? error.message : "An unknown error occurred" 
+      },
+      { status: 500 }
+    );
   }
 }
 

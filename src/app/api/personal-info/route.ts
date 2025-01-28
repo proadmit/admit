@@ -60,8 +60,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, userId });
   } catch (error) {
     console.error("Error in personal-info route:", error);
-    return new NextResponse(
-      JSON.stringify({ error: "Failed to save user data", details: error.message }), 
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    return NextResponse.json(
+      { error: "Failed to save user data", details: errorMessage },
       { status: 500 }
     );
   }

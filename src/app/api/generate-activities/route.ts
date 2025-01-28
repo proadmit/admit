@@ -1,5 +1,3 @@
-"use server";
-
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs";
 import OpenAI from "openai";
@@ -12,10 +10,15 @@ export async function POST(req: Request) {
   try {
     const { userId } = auth();
     if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { major, gender, country } = await req.json();
+    const body = await req.json().catch(() => null);
+    if (!body?.major || !body?.gender || !body?.country) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    const { major, gender, country } = body;
 
     const systemPrompt = `You are a college admissions expert. Generate three sets of extracurricular activities for a ${gender} student from ${country} who wants to major in ${major}. The activities should be impressive and realistic.
 
@@ -46,10 +49,16 @@ Format each activity as a brief paragraph describing the involvement, role, and 
       max_tokens: 1000,
     });
 
-    const response = completion.choices[0].message.content;
-    
-    // Parse the response into sections
+    const response = completion.choices[0]?.message?.content;
+    if (!response) {
+      return NextResponse.json({ error: "Failed to generate activities" }, { status: 500 });
+    }
+
     const sections = response.split(/\d\.\s+(?:Academic|Creative|Community)/);
+    if (sections.length < 4) {
+      return NextResponse.json({ error: "Invalid response format" }, { status: 500 });
+    }
+
     const [_, academic, creative, service] = sections;
 
     // Split each section into individual activities
@@ -60,21 +69,18 @@ Format each activity as a brief paragraph describing the involvement, role, and 
         .map(activity => activity.trim());
     };
 
-    return new NextResponse(JSON.stringify({
+    return NextResponse.json({
       activities: {
         activity: parseActivities(academic),
         creativity: parseActivities(creative),
         service: parseActivities(service),
       }
-    }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("Error generating activities:", error);
-    return new NextResponse(
-      JSON.stringify({ error: "Failed to generate activities" }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+    return NextResponse.json(
+      { error: "Failed to generate activities" },
+      { status: 500 }
     );
   }
 } 
