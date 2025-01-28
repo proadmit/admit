@@ -8,12 +8,12 @@ import type Stripe from "stripe";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.text();
+  const body = await req.text();
     const signature = headers().get("Stripe-Signature");
 
-    if (!signature) {
+  if (!signature) {
       return NextResponse.json({ error: "No signature found" }, { status: 400 });
-    }
+  }
 
     const event = stripe.webhooks.constructEvent(
       body,
@@ -29,11 +29,11 @@ export async function POST(req: Request) {
             session.subscription as string
           );
 
-          await db
+        await db
             .update(subscriptions)
             .set({
               id: subscription.id,
-              userId: session.metadata.userId,
+            userId: session.metadata.userId,
               status: subscription.status,
               priceId: subscription.items.data[0].price.id,
               currentPeriodStart: new Date(subscription.current_period_start * 1000),
@@ -63,9 +63,9 @@ export async function POST(req: Request) {
               currentPeriodEnd: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
             }).onConflictDoNothing();
           } else {
-            await db
-              .update(subscriptions)
-              .set({
+        await db
+          .update(subscriptions)
+          .set({
                 status: subscription.status,
                 priceId: subscription.items.data[0].price.id,
                 currentPeriodStart: new Date(subscription.current_period_start * 1000),

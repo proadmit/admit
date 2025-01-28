@@ -1,5 +1,4 @@
 "use client";
-
 import { useUser, useClerk } from "@clerk/nextjs";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -104,21 +103,6 @@ export default function DashboardPage() {
     title: "",
     duration: "",
   });
-  const [collegeDetails, setCollegeDetails] = useState({
-    major: "",
-    location: "",
-    academicResults: "",
-  });
-  const [collegeList, setCollegeList] = useState<
-    Array<{
-      name: string;
-      level: "Reach" | "Target" | "Safety";
-      deadline: string;
-      requirements: string;
-      applicationLink: string;
-      scholarshipLink: string;
-    }>
-  >([]);
   const [mounted, setMounted] = useState(false);
   const [supplementalEssay, setSupplementalEssay] = useState("");
   const [isGeneratingSupplemental, setIsGeneratingSupplemental] =
@@ -241,26 +225,6 @@ export default function DashboardPage() {
     } finally {
       setIsGenerating(false);
     }
-  };
-
-  const handleGenerateCollegeList = async () => {
-    setIsGenerating(true);
-    // TODO: Add API call to generate college list
-    // For now, just simulate a delay
-    setTimeout(() => {
-      setCollegeList([
-        {
-          name: "Harvard University",
-          level: "Reach",
-          deadline: "January 1, 2026",
-          requirements: "SAT: 1500+, GPA: 4.0",
-          applicationLink: "https://college.harvard.edu/admissions",
-          scholarshipLink: "https://college.harvard.edu/financial-aid",
-        },
-        // ... more universities will be added here
-      ]);
-      setIsGenerating(false);
-    }, 2000);
   };
 
   const handleGenerateSupplementalEssay = async () => {
@@ -1153,176 +1117,6 @@ export default function DashboardPage() {
                     )}
                   </div>
                 )}
-              </div>
-            )}
-
-            {activeTab === "college-list" && (
-              <div className="space-y-8">
-                <div className="rounded-full bg-[#F3F4F6] px-6 py-2 text-sm font-medium text-black w-fit">
-                  COLLEGE LIST
-                </div>
-
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <span className="text-sm font-medium text-black">
-                        Major:
-                      </span>
-                      <Input
-                        value={collegeDetails.major}
-                        onChange={(e) =>
-                          setCollegeDetails((prev) => ({
-                            ...prev,
-                            major: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded-full border-[#E5E7EB] bg-white h-10 hover:border-[#7C3AED] transition-colors focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]"
-                        placeholder="Type..."
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <span className="text-sm font-medium text-black">
-                        Location:
-                      </span>
-                      <Select
-                        value={collegeDetails.location}
-                        onValueChange={(value) =>
-                          setCollegeDetails((prev) => ({
-                            ...prev,
-                            location: value,
-                          }))
-                        }
-                      >
-                        <SelectTrigger className="w-full rounded-full border-[#E5E7EB] bg-white h-10 hover:border-[#7C3AED] transition-colors">
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-[300px] overflow-y-auto rounded-xl border border-[#E5E7EB] bg-white shadow-lg">
-                          {LOCATIONS.map((location) => (
-                            <SelectItem
-                              key={location.id}
-                              value={location.id}
-                              className="py-3 px-4 text-sm text-[#6B7280] cursor-pointer hover:bg-[#F3F4F6] focus:bg-[#F3F4F6] outline-none data-[state=checked]:text-[#7C3AED] data-[state=checked]:bg-[#F3F4F6]"
-                            >
-                              {location.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <span className="text-sm font-medium text-black">
-                      Your Academic Results:
-                    </span>
-                    <Input
-                      value={collegeDetails.academicResults}
-                      onChange={(e) =>
-                        setCollegeDetails((prev) => ({
-                          ...prev,
-                          academicResults: e.target.value,
-                        }))
-                      }
-                      className="w-full rounded-full border-[#E5E7EB] bg-white h-10 hover:border-[#7C3AED] transition-colors focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]"
-                      placeholder="GPA, IELTS, SAT, etc."
-                    />
-                  </div>
-                  <div className="flex justify-end">
-                    <button
-                      onClick={handleGenerateCollegeList}
-                      disabled={
-                        !collegeDetails.major ||
-                        !collegeDetails.location ||
-                        !collegeDetails.academicResults ||
-                        isGenerating
-                      }
-                      className="rounded-full bg-[#7C3AED] px-8 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                    >
-                      {isGenerating ? "Generating..." : "GENERATE"}
-                    </button>
-                  </div>
-
-                  {collegeList.length > 0 && (
-                    <div className="rounded-[24px] border border-[#E5E7EB] bg-white p-4 sm:p-6">
-                      <div className="overflow-x-auto -mx-4 sm:mx-0">
-                        <div className="min-w-[800px] p-4 sm:p-0">
-                          <table className="w-full">
-                            <thead>
-                              <tr className="border-b border-[#E5E7EB]">
-                                <th className="py-3 px-4 text-left text-sm font-medium text-black">
-                                  University
-                                </th>
-                                <th className="py-3 px-4 text-left text-sm font-medium text-black">
-                                  Level
-                                </th>
-                                <th className="py-3 px-4 text-left text-sm font-medium text-black">
-                                  Deadline
-                                </th>
-                                <th className="py-3 px-4 text-left text-sm font-medium text-black">
-                                  Requirements
-                                </th>
-                                <th className="py-3 px-4 text-left text-sm font-medium text-black">
-                                  Links
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {collegeList.map((college, index) => (
-                                <tr
-                                  key={index}
-                                  className="border-b border-[#E5E7EB] last:border-0"
-                                >
-                                  <td className="py-4 px-4 text-sm text-black">
-                                    {college.name}
-                                  </td>
-                                  <td className="py-4 px-4 text-sm">
-                                    <span
-                                      className={cn(
-                                        "rounded-full px-3 py-1 text-xs font-medium",
-                                        college.level === "Reach" &&
-                                          "bg-red-100 text-red-700",
-                                        college.level === "Target" &&
-                                          "bg-yellow-100 text-yellow-700",
-                                        college.level === "Safety" &&
-                                          "bg-green-100 text-green-700"
-                                      )}
-                                    >
-                                      {college.level}
-                                    </span>
-                                  </td>
-                                  <td className="py-4 px-4 text-sm text-black">
-                                    {college.deadline}
-                                  </td>
-                                  <td className="py-4 px-4 text-sm text-black">
-                                    {college.requirements}
-                                  </td>
-                                  <td className="py-4 px-4 text-sm space-x-2">
-                                    <a
-                                      href={college.applicationLink}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-[#7C3AED] hover:underline"
-                                    >
-                                      Apply
-                                    </a>
-                                    <span className="text-[#E5E7EB]">|</span>
-                                    <a
-                                      href={college.scholarshipLink}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-[#7C3AED] hover:underline"
-                                    >
-                                      Scholarship
-                                    </a>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
               </div>
             )}
           </main>
