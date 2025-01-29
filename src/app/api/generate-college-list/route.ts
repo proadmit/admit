@@ -8,11 +8,13 @@ const openai = new OpenAI({
 
 export async function POST(req: Request) {
   try {
+    // Check authentication
     const { userId } = auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Validate request body
     const body = await req.json();
     const { major, academicResults, location } = body;
 
@@ -20,6 +22,14 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "Please provide major, academic results, and location" },
         { status: 400 }
+      );
+    }
+
+    // Check if OpenAI API key is configured
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: "OpenAI API key not configured" },
+        { status: 500 }
       );
     }
 
@@ -54,38 +64,33 @@ Format the response as a JSON object with a "universities" array containing exac
       "requirements": "Detailed academic requirements",
       "applicationLink": "Direct application URL",
       "scholarshipLink": "Scholarship page URL"
-    },
-    ...
+    }
   ]
 }
 
 Ensure all information is accurate and up-to-date. Include real URLs for application portals and scholarship pages.`;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 2000,
-      response_format: { type: "json_object" },
-    });
-
-    const response = completion.choices[0]?.message?.content;
-    if (!response) {
-      return NextResponse.json(
-        { error: "Failed to generate college list" },
-        { status: 500 }
-      );
-    }
-
     try {
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 2000
+      });
+
+      const response = completion.choices[0]?.message?.content;
+      if (!response) {
+        throw new Error("No response from OpenAI");
+      }
+
+      // Parse and validate the response
       const parsedResponse = JSON.parse(response);
       
-      // Validate the response structure
       if (!Array.isArray(parsedResponse.universities) || parsedResponse.universities.length !== 10) {
         throw new Error("Invalid response format: Expected 10 universities");
       }
@@ -113,14 +118,14 @@ Ensure all information is accurate and up-to-date. Include real URLs for applica
 
       return NextResponse.json(parsedResponse);
     } catch (error) {
-      console.error("Error parsing OpenAI response:", error);
+      console.error("OpenAI API Error:", error);
       return NextResponse.json(
-        { error: "Failed to process college list" },
+        { error: "Failed to generate college list" },
         { status: 500 }
       );
     }
   } catch (error) {
-    console.error("Error generating college list:", error);
+    console.error("Error in generate-college-list:", error);
     return NextResponse.json(
       { error: "Failed to generate college list" },
       { status: 500 }

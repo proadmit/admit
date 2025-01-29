@@ -70,6 +70,15 @@ export function CollegeListForm({ isPremium }: CollegeListFormProps) {
       setIsGenerating(true);
       setUniversities([]); // Clear previous results
 
+      // Check authentication first
+      const authCheck = await fetch("/api/subscription");
+      if (!authCheck.ok) {
+        if (authCheck.status === 401) {
+          toast.error("Please sign in to use this feature");
+          return;
+        }
+      }
+
       const response = await fetch("/api/generate-college-list", {
         method: "POST",
         headers: {
@@ -78,13 +87,18 @@ export function CollegeListForm({ isPremium }: CollegeListFormProps) {
         body: JSON.stringify(formData),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || "Failed to generate college list");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to generate college list");
       }
 
-      if (!Array.isArray(data.universities) || data.universities.length === 0) {
+      const data = await response.json();
+
+      if (
+        !data.universities ||
+        !Array.isArray(data.universities) ||
+        data.universities.length === 0
+      ) {
         throw new Error("No universities were generated");
       }
 

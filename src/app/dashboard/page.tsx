@@ -32,6 +32,7 @@ import {
 import { User, Settings, LogOut } from "lucide-react";
 import { useSubscription } from "@/hooks/use-subscription";
 import { toast } from "@/components/ui/toast/use-toast";
+import { CollegeListForm } from "@/components/college-list/form";
 
 const PROMPTS = [
   {
@@ -80,6 +81,7 @@ export default function DashboardPage() {
     subscription,
     isLoading: isLoadingSubscription,
     plan,
+    isPremium,
   } = useSubscription();
   const [activeTab, setActiveTab] = useState("personal-statement");
   const [userName, setUserName] = useState("");
@@ -88,7 +90,6 @@ export default function DashboardPage() {
   const [generatedEssay, setGeneratedEssay] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [isPremium] = useState(false); // TODO: Replace with actual premium check
   const [activities, setActivities] = useState<{
     activity: string[];
     creativity: string[];
@@ -252,6 +253,10 @@ export default function DashboardPage() {
     }
   };
 
+  const handleTabClick = (tab: string) => {
+    setActiveTab(tab);
+  };
+
   const tabs = [
     {
       id: "personal-statement",
@@ -402,7 +407,7 @@ export default function DashboardPage() {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabClick(tab.id)}
                 className={cn(
                   "flex w-full items-center justify-between rounded-2xl p-4 text-left transition-colors",
                   activeTab === tab.id
@@ -1117,6 +1122,12 @@ export default function DashboardPage() {
                     )}
                   </div>
                 )}
+              </div>
+            )}
+
+            {activeTab === "college-list" && (
+              <div className="max-w-6xl mx-auto">
+                <CollegeListForm isPremium={isPremium} />
               </div>
             )}
           </main>
