@@ -8,26 +8,35 @@ const openai = new OpenAI({
 
 export async function POST(req: Request) {
   try {
+    // Check authentication
     const { userId } = auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Validate request body
     const body = await req.json();
     const { 
       recommenderName, 
       position, 
-      duration, 
-      studentName, 
-      studentGender, 
-      studentMajor 
+      duration,
+      studentName,
+      studentGender,
+      studentMajor
     } = body;
 
-    // Validate required fields
     if (!recommenderName || !position || !duration) {
       return NextResponse.json(
         { error: "Please provide recommender's name, position, and duration" },
         { status: 400 }
+      );
+    }
+
+    // Check if OpenAI API key is configured
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: "OpenAI API key not configured" },
+        { status: 500 }
       );
     }
 
@@ -37,52 +46,61 @@ export async function POST(req: Request) {
       day: 'numeric'
     });
 
-    const systemPrompt = `You are ${recommenderName}, a ${position} writing a letter of recommendation for ${studentName}, a ${studentGender.toLowerCase()} student applying to study ${studentMajor}. You have known the student for ${duration} ${parseInt(duration) === 1 ? 'year' : 'years'}.
+    const systemPrompt = `You are ${recommenderName}, a ${position} writing a letter of recommendation for ${studentName}, a ${studentGender?.toLowerCase() || 'student'} applying to study ${studentMajor || 'their chosen field'}. You have known the student for ${duration} ${parseInt(duration) === 1 ? 'year' : 'years'}.
 
 Write a compelling letter of recommendation that:
 1. Demonstrates your credibility and relationship with the student
 2. Provides specific examples of the student's academic abilities and character
 3. Compares them to other students (e.g., "top 5% of students I've taught")
-4. Discusses their potential for success in ${studentMajor}
+4. Discusses their potential for success in ${studentMajor || 'their chosen field'}
 5. Includes personal anecdotes that demonstrate their qualities
 
-Format the letter as follows:
+Format the response as a JSON object with this structure:
+{
+  "letter": {
+    "recommenderName": "${recommenderName}",
+    "position": "${position}",
+    "duration": "${duration}",
+    "status": "pending",
+    "content": "The formatted letter content including the date (${currentDate}), salutation, body paragraphs, and signature"
+  }
+}`;
 
-${currentDate}
+    try {
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 1500
+      });
 
-To Whom It May Concern:
+      const response = completion.choices[0]?.message?.content;
+      if (!response) {
+        throw new Error("No response from OpenAI");
+      }
 
-[Write 3-4 strong paragraphs following the guidelines above]
+      // Parse and validate the response
+      const parsedResponse = JSON.parse(response);
+      
+      if (!parsedResponse.letter || !parsedResponse.letter.content) {
+        throw new Error("Invalid response format");
+      }
 
-Sincerely,
-${recommenderName}
-${position}
-[Your Institution]
-[Contact Information]`;
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 1000,
-    });
-
-    const letter = completion.choices[0]?.message?.content;
-    if (!letter) {
+      return NextResponse.json(parsedResponse);
+    } catch (error) {
+      console.error("OpenAI API Error:", error);
       return NextResponse.json(
-        { error: "Failed to generate letter content" },
+        { error: "Failed to generate recommendation letter" },
         { status: 500 }
       );
     }
-
-    return NextResponse.json({ letter });
   } catch (error) {
-    console.error("Error generating recommendation letter:", error);
+    console.error("Error in generate-recommendation:", error);
     return NextResponse.json(
       { error: "Failed to generate recommendation letter" },
       { status: 500 }
