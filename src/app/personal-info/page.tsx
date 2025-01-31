@@ -54,11 +54,11 @@ export default function PersonalInfoPage() {
   const { user } = useUser();
 
   // Redirect to dashboard if personal info is already completed
-  useEffect(() => {
-    if (user?.unsafeMetadata?.hasCompletedPersonalInfo === true) {
-      router.push("/dashboard");
-    }
-  }, [user, router]);
+  // useEffect(() => {
+  //   if (user?.unsafeMetadata?.hasCompletedPersonalInfo === true) {
+  //     router.push("/dashboard");
+  //   }
+  // }, [user, router]);
 
   const form = useForm<PersonalInfoSchema>({
     resolver: zodResolver(personalInfoSchema),

@@ -6,14 +6,67 @@ import { users, subscriptions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import type Stripe from "stripe";
 
+const PRICE_IDS = {
+  monthly: process.env.NEXT_PUBLIC_STRIPE_MONTHLY_PRICE_ID!,
+  yearly: process.env.NEXT_PUBLIC_STRIPE_YEARLY_PRICE_ID!,
+} as const;
+
+async function updateSubscriptionInDB(subscription: Stripe.Subscription, userId: string) {
+  console.log('🔄 Updating subscription in DB:', {
+    subscriptionId: subscription.id,
+    userId,
+    status: subscription.status,
+    priceId: subscription.items.data[0].price.id
+  });
+
+  try {
+    await db
+      .update(subscriptions)
+      .set({
+        id: subscription.id,
+        userId: userId,
+        status: subscription.status,
+        priceId: subscription.items.data[0].price.id,
+        currentPeriodStart: new Date(subscription.current_period_start * 1000),
+        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+        cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      })
+      .where(eq(subscriptions.userId, userId));
+
+    // Update user's plan based on the price ID
+    const priceId = subscription.items.data[0].price.id;
+    const plan = priceId === PRICE_IDS.yearly ? 'yearly' : 'monthly';
+    
+    await db
+      .update(users)
+      .set({
+        plan,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+
+    console.log('✅ Successfully updated subscription and user plan:', {
+      subscriptionId: subscription.id,
+      userId,
+      plan
+    });
+  } catch (error) {
+    console.error('❌ Error updating subscription in DB:', error);
+    throw error;
+  }
+}
+
 export async function POST(req: Request) {
   try {
-  const body = await req.text();
+    const body = await req.text();
     const signature = headers().get("Stripe-Signature");
 
-  if (!signature) {
+    console.log('📥 Received webhook event');
+
+    if (!signature) {
+      console.error('❌ No Stripe signature found');
       return NextResponse.json({ error: "No signature found" }, { status: 400 });
-  }
+    }
 
     const event = stripe.webhooks.constructEvent(
       body,
@@ -21,64 +74,72 @@ export async function POST(req: Request) {
       process.env.STRIPE_WEBHOOK_SECRET!
     );
 
+    console.log('🎯 Processing webhook event:', event.type);
+
     switch (event.type) {
       case "checkout.session.completed": {
+        console.log('💳 Checkout session completed');
         const session = event.data.object as Stripe.Checkout.Session;
         if (session.subscription && session.metadata?.userId) {
+          console.log('📦 Retrieving subscription details:', session.subscription);
           const subscription = await stripe.subscriptions.retrieve(
             session.subscription as string
           );
-
-        await db
-            .update(subscriptions)
-            .set({
-              id: subscription.id,
-            userId: session.metadata.userId,
-              status: subscription.status,
-              priceId: subscription.items.data[0].price.id,
-              currentPeriodStart: new Date(subscription.current_period_start * 1000),
-              currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-              cancelAtPeriodEnd: subscription.cancel_at_period_end,
-            })
-            .where(eq(subscriptions.userId, session.metadata.userId));
+          await updateSubscriptionInDB(subscription, session.metadata.userId);
         }
         break;
       }
 
-      case "customer.subscription.updated":
-      case "customer.subscription.deleted": {
+      case "customer.subscription.created": {
+        console.log('🆕 New subscription created');
         const subscription = event.data.object as Stripe.Subscription;
         const userId = subscription.metadata.userId;
-
         if (userId) {
-          if (event.type === "customer.subscription.deleted") {
-            await db.insert(subscriptions).values({
-              id: `sub_free_${userId}`,
-              userId: userId,
-              status: "active",
-              priceId: "free",
-              quantity: 1,
-              cancelAtPeriodEnd: false,
-              currentPeriodStart: new Date(),
-              currentPeriodEnd: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
-            }).onConflictDoNothing();
-          } else {
-        await db
-          .update(subscriptions)
-          .set({
-                status: subscription.status,
-                priceId: subscription.items.data[0].price.id,
-                currentPeriodStart: new Date(subscription.current_period_start * 1000),
-                currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-                cancelAtPeriodEnd: subscription.cancel_at_period_end,
-                cancelAt: subscription.cancel_at
-                  ? new Date(subscription.cancel_at * 1000)
-                  : null,
-                canceledAt: subscription.canceled_at
-                  ? new Date(subscription.canceled_at * 1000)
-                  : null,
+          await updateSubscriptionInDB(subscription, userId);
+        }
+        break;
+      }
+
+      case "customer.subscription.updated": {
+        console.log('📝 Subscription updated');
+        const subscription = event.data.object as Stripe.Subscription;
+        const userId = subscription.metadata.userId;
+        if (userId) {
+          await updateSubscriptionInDB(subscription, userId);
+        }
+        break;
+      }
+
+      case "customer.subscription.deleted": {
+        console.log('🗑️ Subscription deleted');
+        const subscription = event.data.object as Stripe.Subscription;
+        const userId = subscription.metadata.userId;
+        if (userId) {
+          try {
+            await db
+              .update(subscriptions)
+              .set({
+                status: 'canceled',
+                cancelAtPeriodEnd: true,
+                updatedAt: new Date(),
               })
               .where(eq(subscriptions.userId, userId));
+
+            await db
+              .update(users)
+              .set({
+                plan: 'free',
+                updatedAt: new Date(),
+              })
+              .where(eq(users.id, userId));
+
+            console.log('✅ Successfully processed subscription deletion:', {
+              userId,
+              subscriptionId: subscription.id
+            });
+          } catch (error) {
+            console.error('❌ Error processing subscription deletion:', error);
+            throw error;
           }
         }
         break;
@@ -86,40 +147,34 @@ export async function POST(req: Request) {
 
       case "payment_intent.succeeded": {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        const userId = paymentIntent.metadata.userId;
-        const priceId = paymentIntent.metadata.priceId;
+        console.log('💰 Payment succeeded:', {
+          paymentIntentId: paymentIntent.id,
+          amount: paymentIntent.amount,
+          currency: paymentIntent.currency,
+          customerId: paymentIntent.customer
+        });
+        break;
+      }
 
-        if (userId && priceId) {
-          const newPlan = priceId === "price_yearly_test" ? "yearly" : "monthly";
-          await db.update(users)
-            .set({
-              plan: newPlan,
-              updatedAt: new Date(),
-            })
-            .where(eq(users.id, userId));
-        }
+      case "payment_intent.payment_failed": {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        console.error('❌ Payment failed:', {
+          paymentIntentId: paymentIntent.id,
+          error: paymentIntent.last_payment_error?.message,
+          customerId: paymentIntent.customer
+        });
         break;
       }
     }
 
-    return NextResponse.json(null, { status: 200 });
+    console.log('✅ Successfully processed webhook event:', event.type);
+    return NextResponse.json({ received: true });
   } catch (error) {
-    if (error instanceof Error) {
-      console.error("❌ Error in webhook handler:", {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-      });
-    } else {
-      console.error("❌ Error in webhook handler:", error);
-    }
-
+    console.error('❌ Webhook error:', error);
     return NextResponse.json(
-      { 
-        error: "Webhook error", 
-        details: error instanceof Error ? error.message : "An unknown error occurred" 
-      },
+      { error: 'Webhook handler failed' },
       { status: 400 }
     );
   }
+} 
 } 

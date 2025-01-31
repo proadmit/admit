@@ -97,19 +97,14 @@ export default async function DashboardLayout({
     const { userId: clerkId } = auth();
 
     if (!clerkId) {
-      redirect("/");
+      redirect("/auth/sign-in");
     }
 
     // Get user info
     const user = await getUserInfo(clerkId);
 
-    // If no user info, redirect to personal info page
-    if (!user) {
-      redirect("/personal-info");
-    }
-
-    // Only create free subscription if user has no plan
-    if (!user.plan) {
+    // Create free subscription if needed
+    if (user && !user.plan) {
       await createFreeSubscription(user.id);
     }
 
@@ -122,6 +117,6 @@ export default async function DashboardLayout({
     );
   } catch (error) {
     console.error("Error in DashboardLayout:", error);
-    redirect("/");
+    redirect("/auth/sign-in");
   }
 }

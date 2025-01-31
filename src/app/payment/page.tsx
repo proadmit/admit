@@ -11,10 +11,17 @@ import {
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 );
+
+const PRICE_IDS = {
+  monthly: process.env.NEXT_PUBLIC_STRIPE_MONTHLY_PRICE_ID!,
+  yearly: process.env.NEXT_PUBLIC_STRIPE_YEARLY_PRICE_ID!,
+} as const;
 
 // Payment form component
 function CheckoutForm({
@@ -170,6 +177,7 @@ export default function PaymentPage() {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     async function loadSubscription() {
@@ -237,18 +245,9 @@ export default function PaymentPage() {
     }
   }
 
-  async function handleUpgrade(priceId: string) {
+  const handleUpgrade = async (priceId: string) => {
     try {
-      setIsProcessing(true);
-      setError(null);
-
-      if (priceId === "free") {
-        toast.info("Downgrading to free plan...");
-        return;
-      }
-
-      console.log("Creating payment intent for plan:", priceId);
-
+      setIsLoading(true);
       const response = await fetch("/api/stripe/create-checkout", {
         method: "POST",
         headers: {
@@ -262,27 +261,17 @@ export default function PaymentPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        console.error("Payment intent creation failed:", data.error);
-        throw new Error(data.error || "Failed to create payment intent");
+        throw new Error(data.error || "Failed to create checkout session");
       }
 
-      if (!data.clientSecret) {
-        console.error("No client secret received");
-        throw new Error("Invalid response from server");
-      }
-
-      console.log("Payment intent created successfully");
-      setClientSecret(data.clientSecret);
-      setSelectedPlanId(priceId);
-    } catch (error: any) {
-      console.error("Error during upgrade:", error);
-      toast.error(
-        error.message || "Failed to process upgrade. Please try again."
-      );
+      window.location.href = data.url;
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Failed to process payment");
     } finally {
-      setIsProcessing(false);
+      setIsLoading(false);
     }
-  }
+  };
 
   if (loading) {
     return <div>Loading...</div>;
@@ -291,6 +280,23 @@ export default function PaymentPage() {
   return (
     <div className="min-h-screen bg-white px-4 py-12 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
+        {process.env.NODE_ENV === "development" && (
+          <div className="mb-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <h2 className="text-lg font-semibold text-yellow-800 mb-2">
+              🧪 Test Mode
+            </h2>
+            <p className="text-sm text-yellow-700 mb-2">
+              Use these test card numbers:
+            </p>
+            <ul className="text-sm text-yellow-700 space-y-1">
+              <li>Success: 4242 4242 4242 4242</li>
+              <li>Decline: 4000 0000 0000 0002</li>
+              <li>Use any future date for expiry (e.g., 12/25)</li>
+              <li>Use any 3 digits for CVC</li>
+            </ul>
+          </div>
+        )}
+
         <h1 className="text-center text-4xl font-bold text-black mb-16">
           Upgrade your plan
         </h1>
@@ -354,19 +360,20 @@ export default function PaymentPage() {
                       Your current plan
                     </button>
                   ) : (
-                    <button
+                    <Button
+                      className="w-full"
                       onClick={() => handleUpgrade(plan.priceId)}
-                      disabled={isProcessing}
-                      className="w-full rounded-full bg-[#0A2FFF] px-6 py-3 text-base font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 mb-8"
+                      disabled={isLoading}
                     >
-                      {isProcessing
-                        ? "Processing..."
-                        : plan.priceId === "free"
+                      {isLoading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : null}
+                      {plan.priceId === "free"
                         ? "Downgrade to Free"
                         : plan.period === "USD/month"
                         ? "Upgrade to Premium"
                         : "Upgrade to Year Premium"}
-                    </button>
+                    </Button>
                   )}
 
                   <ul className="space-y-4">
