@@ -23,8 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { User } from "lucide-react";
-import { useEffect } from "react";
+import { User, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 const personalInfoSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -52,6 +52,7 @@ const commonCountries = [
 export default function PersonalInfoPage() {
   const router = useRouter();
   const { user } = useUser();
+  const [isLoading, setIsLoading] = useState(false);
 
   // Redirect to dashboard if personal info is already completed
   // useEffect(() => {
@@ -73,6 +74,7 @@ export default function PersonalInfoPage() {
   });
 
   const onSubmit = async (data: PersonalInfoSchema) => {
+    setIsLoading(true);
     try {
       // Save to Clerk metadata
       await user?.update({
@@ -107,6 +109,8 @@ export default function PersonalInfoPage() {
     } catch (error) {
       console.error("Failed to update personal info:", error);
       // You might want to show this error to the user using a toast or alert
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -263,9 +267,17 @@ export default function PersonalInfoPage() {
 
             <Button
               type="submit"
-              className="mt-6 w-full rounded-full bg-[#7857FF] py-2.5 text-base font-medium text-white hover:opacity-90"
+              disabled={isLoading}
+              className="mt-6 w-full rounded-full bg-[#7857FF] py-2.5 text-base font-medium text-white hover:opacity-90 disabled:opacity-50"
             >
-              Continue
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Continue"
+              )}
             </Button>
           </form>
         </Form>
