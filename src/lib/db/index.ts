@@ -10,8 +10,11 @@ const isProduction = process.env.NODE_ENV === 'production';
 const client = postgres(connectionString, { 
   max: 1,
   ssl: isProduction ? {
-    rejectUnauthorized: true // This ensures that the SSL certificate is valid
+    rejectUnauthorized: false // Allow self-signed certificates in production
   } : false,
+  connect_timeout: 10, // Connection timeout in seconds
+  idle_timeout: 20, // How long a connection can remain idle before being closed
+  max_lifetime: 60 * 30 // Max connection lifetime in seconds (30 minutes)
 });
 
 export const db = drizzle(client, { schema });

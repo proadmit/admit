@@ -28,5 +28,10 @@
   "regions": ["iad1"],
   "buildCommand": "npm run build",
   "installCommand": "npm install",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "env": {
+    "NODE_ENV": "production",
+    "POSTGRES_PRISMA_URL": "DATABASE_URL",
+    "POSTGRES_URL_NON_POOLING": "DATABASE_URL"
+  }
 }
