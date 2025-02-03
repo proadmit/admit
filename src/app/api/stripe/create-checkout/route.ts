@@ -5,8 +5,12 @@ import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import Stripe from "stripe";
 
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error('STRIPE_SECRET_KEY is not set in environment variables');
+}
+
 // Initialize Stripe with test key
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16",
 });
 
@@ -17,9 +21,22 @@ const PRICE_IDS = {
 
 export async function POST(req: Request) {
   try {
-    const { userId: clerkId } = await auth();
+    const authResult = await auth();
+    const clerkId = authResult?.userId;
+    
     if (!clerkId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { priceId } = body;
+
+    if (!priceId) {
+      return NextResponse.json({ error: "Price ID is required" }, { status: 400 });
+    }
+
+    if (![PRICE_IDS.monthly, PRICE_IDS.yearly].includes(priceId)) {
+      return NextResponse.json({ error: "Invalid price ID" }, { status: 400 });
     }
 
     const user = await db.query.users.findFirst({
@@ -30,71 +47,37 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const { priceId } = await req.json();
-    if (!priceId) {
-      return NextResponse.json({ error: "Price ID is required" }, { status: 400 });
-    }
-
-    // Create Stripe checkout session
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment?success=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment?canceled=true`,
+    // Create a PaymentIntent instead of a Checkout Session
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: getPlanAmount(priceId),
+      currency: 'usd',
+      automatic_payment_methods: {
+        enabled: true,
+      },
       metadata: {
         userId: user.id,
         clerkId: user.clerkId,
-      },
-      customer_email: user.email,
-      allow_promotion_codes: true,
-      billing_address_collection: "auto",
-      subscription_data: {
-        metadata: {
-          userId: user.id,
-          clerkId: user.clerkId,
-        },
-      },
+        priceId: priceId,
+        planType: priceId === PRICE_IDS.monthly ? 'monthly' : 'yearly'
+      }
     });
 
-    if (!session.url) {
-      console.error("No session URL in response:", session);
-      return NextResponse.json(
-        { error: "Failed to create checkout session" },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({
+      clientSecret: paymentIntent.client_secret,
+    });
   } catch (error) {
-    // Detailed error logging in development
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Stripe Error Details:', {
-        error: error instanceof Error ? {
-          message: error.message,
-          name: error.name,
-          stack: error.stack,
-        } : error,
-        stripeKey: process.env.STRIPE_SECRET_KEY ? 'Present' : 'Missing',
-        priceId,
-        userId: user?.id,
-        clerkId,
-      });
-    } else {
-      console.error("Error in create-checkout:", error);
-    }
+    console.error("Payment intent creation error:", {
+      error: error instanceof Error ? {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+      } : error,
+    });
 
     return NextResponse.json(
       { 
-        error: "Failed to create checkout session",
-        details: process.env.NODE_ENV === 'development' 
-          ? (error instanceof Error ? error.message : 'Unknown error')
-          : undefined
+        error: "Failed to create payment intent",
+        details: error instanceof Error ? error.message : "Unknown error"
       },
       { status: 500 }
     );

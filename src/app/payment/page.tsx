@@ -39,12 +39,17 @@ function CheckoutForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stripe || !elements) return;
+    if (!stripe || !elements) {
+      toast.error("Payment system not initialized");
+      return;
+    }
 
     setIsProcessing(true);
     setError(null);
 
     try {
+      toast.loading("Processing your payment...");
+
       // Submit the payment form
       const { error: submitError } = await elements.submit();
       if (submitError) {
@@ -52,68 +57,104 @@ function CheckoutForm({
       }
 
       // Confirm the payment
-      const { error: confirmError, paymentIntent } =
+      const { error: paymentError, paymentIntent } =
         await stripe.confirmPayment({
           elements,
           redirect: "if_required",
         });
 
-      if (confirmError) {
-        throw confirmError;
+      if (paymentError) {
+        throw paymentError;
       }
 
       if (!paymentIntent) {
-        throw new Error("Payment failed");
+        throw new Error("Payment failed - No payment intent returned");
       }
 
-      // Send confirmation to our API
-      const response = await fetch("/api/stripe/confirm-payment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          paymentIntentId: paymentIntent.id,
-          priceId: priceId,
-        }),
-      });
+      if (paymentIntent.status === "succeeded") {
+        toast.dismiss();
+        toast.loading("Payment successful! Upgrading your plan...");
 
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Payment confirmation failed");
-      }
+        // Update subscription in our database
+        const response = await fetch("/api/stripe/confirm-payment", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            paymentIntentId: paymentIntent.id,
+            priceId: priceId,
+          }),
+        });
 
-      // Update local state with new subscription data
-      if (data.success) {
-        toast.success("Payment successful! Your plan has been upgraded.");
-        router.refresh();
-        router.push("/dashboard?success=true");
+        const data = await response.json();
+
+        if (!response.ok) {
+          console.error("Subscription update failed:", data);
+          throw new Error(
+            data.details || data.error || "Failed to update subscription"
+          );
+        }
+
+        toast.dismiss();
+        toast.success("Your plan has been upgraded successfully!");
+
+        // Redirect to dashboard after a short delay
+        setTimeout(() => {
+          router.push("/dashboard?success=true");
+        }, 1500);
+      } else {
+        throw new Error(`Payment status: ${paymentIntent.status}`);
       }
     } catch (err: any) {
+      toast.dismiss();
       console.error("Payment error:", err);
+
+      // Show specific error messages based on the error type
+      if (err.type === "card_error" || err.type === "validation_error") {
+        toast.error(err.message || "Your card was declined");
+      } else if (err.message.includes("subscription")) {
+        toast.error("Failed to update subscription. Please contact support.");
+      } else {
+        toast.error(err.message || "Payment failed. Please try again.");
+      }
+
       setError(err.message || "Something went wrong");
-      toast.error(err.message || "Payment failed");
     } finally {
       setIsProcessing(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-6">
       <PaymentElement />
-      {error && <div className="text-red-500 text-sm">{error}</div>}
+      {error && (
+        <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">
+          {error}
+        </div>
+      )}
       <div className="flex gap-3">
         <button
           type="submit"
           disabled={isProcessing || !stripe || !elements}
-          className="flex-1 bg-[#0A2FFF] text-white rounded-full py-3 font-medium disabled:opacity-50"
+          className="flex-1 bg-[#47B5FF] text-white rounded-full py-3 font-medium disabled:opacity-50 hover:bg-[#47B5FF]/90 transition-colors"
         >
-          {isProcessing ? "Processing..." : "Subscribe"}
+          {isProcessing ? (
+            <div className="flex items-center justify-center">
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Processing...
+            </div>
+          ) : (
+            "Pay now"
+          )}
         </button>
         <button
           type="button"
-          onClick={onClose}
-          className="flex-1 bg-gray-100 text-gray-600 rounded-full py-3 font-medium hover:bg-gray-200"
+          onClick={() => {
+            onClose();
+            toast.dismiss();
+          }}
+          className="flex-1 bg-gray-100 text-gray-600 rounded-full py-3 font-medium hover:bg-gray-200 transition-colors"
         >
           Cancel
         </button>
@@ -128,6 +169,8 @@ const PLANS = [
     price: "$0",
     period: "USD/month",
     priceId: "free",
+    buttonText: "Your current plan",
+    buttonClass: "bg-gray-200 text-gray-600 cursor-not-allowed",
     features: [
       "AI platform access",
       "Limited Personal Statement",
@@ -139,7 +182,9 @@ const PLANS = [
     name: "Premium Plan",
     price: "$10",
     period: "USD/month",
-    priceId: "price_monthly_test",
+    priceId: PRICE_IDS.monthly,
+    buttonText: "Upgrade to Premium",
+    buttonClass: "bg-[#47B5FF] text-white hover:bg-[#47B5FF]/90",
     features: [
       "AI platform access",
       "Unlimited Personal Statements",
@@ -151,10 +196,12 @@ const PLANS = [
     ],
   },
   {
-    name: "Premium Plan\nfor a year",
+    name: "Premium Plan for a year",
     price: "$80",
     period: "USD/year",
-    priceId: "price_yearly_test",
+    priceId: PRICE_IDS.yearly,
+    buttonText: "Upgrade to Year Premium",
+    buttonClass: "bg-[#47B5FF] text-white hover:bg-[#47B5FF]/90",
     features: [
       "A 33% Discount in yearly plan",
       "AI platform access",
@@ -173,11 +220,10 @@ export default function PaymentPage() {
   const searchParams = useSearchParams();
   const [currentPlan, setCurrentPlan] = useState<string>("free");
   const [loading, setLoading] = useState(true);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isLoading, setIsLoading] = useState<string | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     async function loadSubscription() {
@@ -203,17 +249,13 @@ export default function PaymentPage() {
 
     loadSubscription();
 
-    // Check for success/canceled params
-    const success = searchParams.get("success");
-    const canceled = searchParams.get("canceled");
-
-    if (success) {
-      toast.success("Successfully upgraded your plan!");
+    // Check for success or canceled status
+    if (searchParams?.get("success")) {
+      toast.success("Payment successful! Your plan has been upgraded.");
       router.push("/dashboard");
     }
-
-    if (canceled) {
-      toast.error("Payment canceled. Please try again.");
+    if (searchParams?.get("canceled")) {
+      toast.error("Payment canceled.");
     }
   }, [searchParams, router]);
 
@@ -247,7 +289,8 @@ export default function PaymentPage() {
 
   const handleUpgrade = async (priceId: string) => {
     try {
-      setIsLoading(true);
+      setIsLoading(priceId);
+      setSelectedPlanId(priceId);
       const response = await fetch("/api/stripe/create-checkout", {
         method: "POST",
         headers: {
@@ -264,12 +307,13 @@ export default function PaymentPage() {
         throw new Error(data.error || "Failed to create checkout session");
       }
 
-      window.location.href = data.url;
-    } catch (error) {
-      console.error("Error:", error);
-      toast.error("Failed to process payment");
+      setClientSecret(data.clientSecret);
+    } catch (error: any) {
+      console.error("Error creating checkout session:", error);
+      setError(error.message || "Failed to start checkout process");
+      toast.error(error.message || "Failed to start checkout process");
     } finally {
-      setIsLoading(false);
+      setIsLoading(null);
     }
   };
 
@@ -278,188 +322,120 @@ export default function PaymentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
-        {process.env.NODE_ENV === "development" && (
-          <div className="mb-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <h2 className="text-lg font-semibold text-yellow-800 mb-2">
-              🧪 Test Mode
-            </h2>
-            <p className="text-sm text-yellow-700 mb-2">
-              Use these test card numbers:
-            </p>
-            <ul className="text-sm text-yellow-700 space-y-1">
-              <li>Success: 4242 4242 4242 4242</li>
-              <li>Decline: 4000 0000 0000 0002</li>
-              <li>Use any future date for expiry (e.g., 12/25)</li>
-              <li>Use any 3 digits for CVC</li>
-            </ul>
-          </div>
-        )}
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold text-center mb-12">
+        Upgrade your plan
+      </h1>
 
-        <h1 className="text-center text-4xl font-bold text-black mb-16">
-          Upgrade your plan
-        </h1>
-
-        {/* Show cancel button if user has active subscription */}
-        {currentPlan !== "free" && (
-          <div className="text-center mb-8">
-            <button
-              onClick={handleCancel}
-              disabled={isProcessing}
-              className="inline-flex items-center px-6 py-3 border border-red-500 text-red-500 rounded-full hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
-            >
-              {isProcessing ? (
-                "Cancelling..."
-              ) : (
-                <>
-                  <svg
-                    className="mr-2 h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                  Cancel Current Subscription
-                </>
-              )}
-            </button>
-          </div>
-        )}
-
-        <div className="relative">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
-            {PLANS.map((plan) => (
-              <div key={plan.priceId} className="relative">
-                <div className="h-full rounded-none first:rounded-l-[32px] last:rounded-r-[32px] border border-[#E5E7EB] bg-white p-8">
-                  <div className="mb-8">
-                    <h3 className="text-2xl font-semibold text-black whitespace-pre-line">
-                      {plan.name}
-                    </h3>
-                    <div className="mt-4 flex items-baseline">
-                      <span className="text-4xl font-bold text-black">
-                        {plan.price}
-                      </span>
-                      <span className="ml-1 text-sm text-[#6B7280]">
-                        {plan.period}
-                      </span>
-                    </div>
-                  </div>
-
-                  {currentPlan === plan.priceId ? (
-                    <button
-                      disabled
-                      className="w-full rounded-full bg-[#E5E7EB] px-6 py-3 text-base font-medium text-[#6B7280] mb-8"
-                    >
-                      Your current plan
-                    </button>
-                  ) : (
-                    <Button
-                      className="w-full"
-                      onClick={() => handleUpgrade(plan.priceId)}
-                      disabled={isLoading}
-                    >
-                      {isLoading ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : null}
-                      {plan.priceId === "free"
-                        ? "Downgrade to Free"
-                        : plan.period === "USD/month"
-                        ? "Upgrade to Premium"
-                        : "Upgrade to Year Premium"}
-                    </Button>
-                  )}
-
-                  <ul className="space-y-4">
-                    {plan.features.map((feature, index) => (
-                      <li key={index} className="flex items-start">
-                        <svg
-                          className="mr-3 h-5 w-5 flex-shrink-0 text-[#0A2FFF] mt-0.5"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                        <span className="text-[#6B7280] text-base">
-                          {feature}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {selectedPlanId === plan.priceId && clientSecret && (
-                  <div className="absolute left-1/2 transform -translate-x-1/2 mt-4 w-full max-w-md z-10">
-                    <div className="rounded-[20px] border border-[#E5E7EB] bg-white p-6 shadow-lg mx-4">
-                      <div className="text-center mb-4">
-                        <h4 className="text-lg font-medium text-gray-900">
-                          Complete your upgrade
-                        </h4>
-                        <p className="text-sm text-gray-500">
-                          Enter your payment details below
-                        </p>
-                      </div>
-                      <Elements
-                        stripe={stripePromise}
-                        options={{
-                          clientSecret,
-                          appearance: {
-                            theme: "stripe",
-                            variables: {
-                              colorPrimary: "#0A2FFF",
-                              borderRadius: "8px",
-                              colorBackground: "#ffffff",
-                              colorText: "#1a1f36",
-                              colorDanger: "#df1b41",
-                              spacingUnit: "4px",
-                              fontFamily:
-                                "system-ui, -apple-system, sans-serif",
-                            },
-                            rules: {
-                              ".Label": {
-                                marginBottom: "8px",
-                                color: "#6b7280",
-                              },
-                              ".Input": {
-                                padding: "12px",
-                                border: "1px solid #e5e7eb",
-                                borderRadius: "8px",
-                              },
-                            },
-                          },
-                        }}
-                      >
-                        <CheckoutForm
-                          onClose={() => {
-                            setSelectedPlanId(null);
-                            setClientSecret(null);
-                          }}
-                          priceId={plan.priceId}
-                        />
-                      </Elements>
-                    </div>
-                  </div>
-                )}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {PLANS.map((plan) => (
+          <div
+            key={plan.priceId}
+            className="rounded-[20px] border p-6 flex flex-col justify-between bg-white shadow-sm"
+          >
+            <div>
+              <h2 className="text-xl font-semibold mb-2">{plan.name}</h2>
+              <div className="flex items-baseline mb-6">
+                <span className="text-3xl font-bold">{plan.price}</span>
+                <span className="text-gray-500 ml-1">{plan.period}</span>
               </div>
-            ))}
-          </div>
-        </div>
 
-        <div className="mt-8 text-center text-sm text-[#9CA3AF]">
-          © 2024 Admit.uz. All rights reserved
+              <ul className="space-y-3">
+                {plan.features.map((feature, index) => (
+                  <li key={index} className="flex items-start gap-2">
+                    <svg
+                      className="w-5 h-5 text-[#47B5FF] flex-shrink-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    <span className="text-gray-600">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {plan.priceId === "free" ? (
+              <button
+                disabled
+                className="mt-6 w-full py-3 px-4 rounded-full font-medium bg-gray-100 text-gray-500 cursor-not-allowed"
+              >
+                Your current plan
+              </button>
+            ) : (
+              <button
+                onClick={() => handleUpgrade(plan.priceId)}
+                disabled={
+                  isLoading === plan.priceId || plan.priceId === currentPlan
+                }
+                className={`mt-6 w-full py-3 px-4 rounded-full font-medium ${
+                  plan.priceId === currentPlan
+                    ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                    : "bg-[#47B5FF] text-white hover:bg-[#47B5FF]/90 transition-colors"
+                }`}
+              >
+                {isLoading === plan.priceId ? (
+                  <div className="flex items-center justify-center">
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
+                  </div>
+                ) : plan.priceId === currentPlan ? (
+                  "Current Plan"
+                ) : plan.period === "USD/month" ? (
+                  "Upgrade to Premium"
+                ) : (
+                  "Upgrade to Year Premium"
+                )}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {clientSecret && selectedPlanId && (
+        <div className="mt-8 max-w-2xl mx-auto p-6 border rounded-[20px] bg-white shadow-sm">
+          <div className="text-center mb-6">
+            <h3 className="text-xl font-semibold mb-2">
+              Complete your upgrade
+            </h3>
+            <p className="text-gray-600">Enter your payment details below</p>
+          </div>
+          <Elements
+            stripe={stripePromise}
+            options={{
+              clientSecret,
+              appearance: {
+                theme: "stripe",
+                variables: {
+                  colorPrimary: "#47B5FF",
+                  borderRadius: "8px",
+                },
+              },
+            }}
+          >
+            <CheckoutForm
+              onClose={() => {
+                setClientSecret(null);
+                setSelectedPlanId(null);
+                setError(null);
+              }}
+              priceId={selectedPlanId}
+            />
+          </Elements>
         </div>
+      )}
+
+      {error && <div className="mt-4 text-center text-red-500">{error}</div>}
+
+      <div className="mt-8 text-center text-sm text-gray-500">
+        Secure, 1-click checkout with Link
       </div>
     </div>
   );

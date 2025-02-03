@@ -1,84 +1,129 @@
 import { auth } from "@clerk/nextjs";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { users, subscriptions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import Stripe from "stripe";
+import { stripe } from "@/lib/stripe";
+import { headers } from "next/headers";
 
-// Ensure Stripe secret key is available
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("Missing STRIPE_SECRET_KEY environment variable");
-}
-
-// Initialize Stripe with secret key
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2023-10-16",
-});
+const PRICE_IDS = {
+  monthly: process.env.NEXT_PUBLIC_STRIPE_MONTHLY_PRICE_ID!,
+  yearly: process.env.NEXT_PUBLIC_STRIPE_YEARLY_PRICE_ID!,
+} as const;
 
 export async function POST(req: Request) {
   try {
-    console.log("🔵 Starting payment confirmation...");
-
-    const { userId: clerkId } = await auth();
+    // Ensure headers are awaited
+    await headers();
+    const authResult = await auth();
+    const clerkId = authResult?.userId;
+    
     if (!clerkId) {
-      console.error("❌ No clerk ID found in auth");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { paymentIntentId, priceId } = await req.json();
+    const body = await req.json();
+    const { paymentIntentId, priceId } = body;
+
+    console.log("Received payment confirmation:", { paymentIntentId, priceId });
+
     if (!paymentIntentId || !priceId) {
-      return NextResponse.json(
-        { error: "Payment intent ID and price ID are required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Get user data
-    const user = await db.query.users.findFirst({
-      where: eq(users.clerkId, clerkId),
-    });
+    // Verify the payment intent
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    console.log("Payment intent status:", paymentIntent.status);
+    
+    if (paymentIntent.status !== "succeeded") {
+      return NextResponse.json({ error: "Payment not successful" }, { status: 400 });
+    }
 
-    if (!user) {
+    // Get user from database
+    const userResult = await db
+      .select()
+      .from(users)
+      .where(eq(users.clerkId, clerkId))
+      .execute();
+
+    if (!userResult || userResult.length === 0) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    const user = userResult[0];
+    const plan = priceId === PRICE_IDS.yearly ? 'yearly' : 'monthly';
+    const now = new Date();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + (plan === 'yearly' ? 365 : 30));
+
     try {
-      // Retrieve payment intent
-      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-
-    if (paymentIntent.status === "succeeded") {
-      const newPlan = priceId === "price_monthly_test" ? "monthly" : "yearly";
-
-        // Update user's plan
+      // Update user's plan
       await db
         .update(users)
         .set({
-          plan: newPlan,
-          updatedAt: new Date(),
+          plan,
+          updatedAt: now,
         })
         .where(eq(users.id, user.id));
 
-        return NextResponse.json({ 
-          success: true,
-          plan: newPlan
-        });
-    }
+      // Delete existing subscription if exists
+      await db
+        .delete(subscriptions)
+        .where(eq(subscriptions.userId, user.id));
 
-    return NextResponse.json(
-        { error: `Payment not succeeded. Status: ${paymentIntent.status}` },
-      { status: 400 }
-    );
-    } catch (stripeError: any) {
-      console.error("Stripe error:", stripeError);
+      // Create new subscription
+      await db
+        .insert(subscriptions)
+        .values({
+          id: `sub_${Date.now()}_${user.id}`,
+          userId: user.id,
+          status: 'active',
+          priceId,
+          quantity: 1,
+          cancelAtPeriodEnd: false,
+          currentPeriodStart: now,
+          currentPeriodEnd: endDate,
+          createdAt: now,
+        });
+
+      return NextResponse.json({
+        success: true,
+        message: "Subscription updated successfully",
+        plan,
+        user: {
+          id: user.id,
+          plan
+        }
+      });
+    } catch (dbError) {
+      console.error("Database error details:", {
+        error: dbError,
+        message: dbError instanceof Error ? dbError.message : "Unknown database error",
+        stack: dbError instanceof Error ? dbError.stack : undefined,
+        userId: user.id,
+        plan
+      });
+      
       return NextResponse.json(
-        { error: stripeError.message || "Stripe operation failed" },
+        { 
+          error: "Failed to update subscription in database",
+          details: dbError instanceof Error ? dbError.message : "Unknown database error"
+        },
         { status: 500 }
       );
     }
-  } catch (error: any) {
-    console.error("❌ Error confirming payment:", error);
+  } catch (error) {
+    console.error("Error confirming payment:", {
+      error,
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    
     return NextResponse.json(
-      { error: error.message || "Failed to confirm payment" },
+      { 
+        error: "Failed to confirm payment",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
       { status: 500 }
     );
   }
