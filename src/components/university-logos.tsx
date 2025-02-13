@@ -15,24 +15,37 @@ const logos = [
 
 export function UniversityLogos() {
   const controls = useAnimation();
-  const xPosition = useMotionValue(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredLogo, setHoveredLogo] = useState<string | null>(null);
 
   useEffect(() => {
-    if (hoveredLogo) {
-      controls.stop();
-    } else {
-      controls.start({
-        x: [xPosition.get(), -containerRef.current!.offsetWidth],
+    const startAnimation = async () => {
+      if (!containerRef.current) return;
+
+      const containerWidth = containerRef.current.offsetWidth;
+      const singleSetWidth = containerWidth / 2;
+
+      await controls.start({
+        x: -singleSetWidth,
         transition: {
           duration: 20,
-          repeat: Infinity,
           ease: "linear",
+          repeat: Infinity,
+          repeatType: "loop",
         },
       });
+    };
+
+    if (!hoveredLogo) {
+      startAnimation();
+    } else {
+      controls.stop();
     }
-  }, [hoveredLogo, controls, xPosition]);
+
+    return () => {
+      controls.stop();
+    };
+  }, [hoveredLogo, controls]);
 
   return (
     <div
@@ -42,9 +55,9 @@ export function UniversityLogos() {
     >
       <motion.div
         ref={containerRef}
-        className="flex gap-8"
-        style={{ x: xPosition }}
+        className="flex gap-8 absolute"
         animate={controls}
+        style={{ x: 0 }}
       >
         {/* First set of logos */}
         {logos.map((logo) => (
@@ -71,6 +84,27 @@ export function UniversityLogos() {
         {logos.map((logo) => (
           <div
             key={`duplicate-${logo.name}`}
+            className="relative w-32 h-16 flex-shrink-0 transition-all duration-300 cursor-pointer"
+            onMouseEnter={() => setHoveredLogo(logo.name)}
+            onMouseLeave={() => setHoveredLogo(null)}
+            style={{
+              filter:
+                hoveredLogo === logo.name ? "grayscale(0)" : "grayscale(1)",
+              transition: "filter 0.3s ease",
+            }}
+          >
+            <Image
+              src={logo.src}
+              alt={`${logo.name} University`}
+              fill
+              className="object-contain"
+            />
+          </div>
+        ))}
+        {/* Third set of logos to ensure seamless loop */}
+        {logos.map((logo) => (
+          <div
+            key={`triplicate-${logo.name}`}
             className="relative w-32 h-16 flex-shrink-0 transition-all duration-300 cursor-pointer"
             onMouseEnter={() => setHoveredLogo(logo.name)}
             onMouseLeave={() => setHoveredLogo(null)}

@@ -32,7 +32,7 @@ export function useSubscription() {
     subscription,
     isLoading,
     plan: subscription?.plan || "free",
-    isPremium: subscription?.isPremium || false,
+    isPremium: true, // Always return true to make features available for all users
     updatedAt: subscription?.updatedAt,
     refetchSubscription: refetch,
   };

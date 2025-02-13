@@ -6,7 +6,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, Lock } from "lucide-react";
+import Link from "next/link";
 import {
   Select,
   SelectContent,
@@ -128,7 +129,25 @@ export function RecommendationForm({ isPremium }: RecommendationFormProps) {
 
   return (
     <Card className="bg-white rounded-lg shadow-sm">
-      <CardContent className="p-6">
+      <CardContent className="p-6 relative">
+        {!isPremium && (
+          <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center">
+            <div className="bg-white p-6 rounded-lg shadow-lg text-center max-w-md">
+              <Lock className="w-12 h-12 text-[#7857FF] mx-auto mb-4" />
+              <h3 className="text-xl font-semibold mb-2">Premium Feature</h3>
+              <p className="text-gray-600 mb-4">
+                Upgrade to Premium to generate AI-powered recommendation letters
+              </p>
+              <Button
+                asChild
+                className="bg-[#7857FF] hover:bg-[#6544FF] text-white rounded-full px-8"
+              >
+                <Link href="/payment">Upgrade Now</Link>
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-6">
           <div className="inline-block rounded-lg bg-gray-100 px-3 py-1">
             <span className="text-sm font-medium text-gray-800">
@@ -249,47 +268,26 @@ export function RecommendationForm({ isPremium }: RecommendationFormProps) {
                       <TableHead>Position</TableHead>
                       <TableHead>Duration</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Content</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {letters.map((letter, index) => (
                       <TableRow key={index}>
-                        <TableCell className="font-medium">
-                          {letter.recommenderName}
-                        </TableCell>
+                        <TableCell>{letter.recommenderName}</TableCell>
                         <TableCell>{letter.position}</TableCell>
+                        <TableCell>{letter.duration} years</TableCell>
                         <TableCell>
-                          {letter.duration}{" "}
-                          {parseInt(letter.duration) === 1 ? "year" : "years"}
+                          <span className="capitalize">{letter.status}</span>
                         </TableCell>
-                        <TableCell>
-                          <span
-                            className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
-                              letter.status === "pending"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : letter.status === "completed"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            {letter.status}
-                          </span>
+                        <TableCell className="max-w-md">
+                          <div className="truncate">{letter.content}</div>
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </div>
-              {letters[0]?.content && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">
-                    Generated Letter:
-                  </h3>
-                  <div className="whitespace-pre-wrap text-sm text-gray-600">
-                    {letters[0].content}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>
