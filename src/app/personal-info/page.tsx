@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import countries from "world-countries";
 import {
   Form,
   FormControl,
@@ -39,15 +40,11 @@ const personalInfoSchema = z.object({
 
 type PersonalInfoSchema = z.infer<typeof personalInfoSchema>;
 
-const commonCountries = [
-  { code: "US", name: "United States" },
-  { code: "GB", name: "United Kingdom" },
-  { code: "CA", name: "Canada" },
-  { code: "AU", name: "Australia" },
-  { code: "NZ", name: "New Zealand" },
-  { code: "SG", name: "Singapore" },
-  { code: "HK", name: "Hong Kong" },
-].sort((a, b) => a.name.localeCompare(b.name));
+const allCountries = countries.map((country) => ({
+  code: country.cca2, // Country Code (e.g., "US", "GB")
+  name: country.name.common, // Country Name (e.g., "United States", "United Kingdom")
+})).sort((a, b) => a.name.localeCompare(b.name));
+
 
 export default function PersonalInfoPage() {
   const router = useRouter();
@@ -212,8 +209,8 @@ export default function PersonalInfoPage() {
                         <SelectValue placeholder="Select" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
-                      {commonCountries.map((country) => (
+                    <SelectContent className="max-h-60 overflow-y-auto">
+                    {allCountries.map((country) => (
                         <SelectItem key={country.code} value={country.code}>
                           {country.name}
                         </SelectItem>

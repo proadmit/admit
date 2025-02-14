@@ -9,6 +9,7 @@ import { HiOutlineMail } from "react-icons/hi";
 import { RiFileTextLine, RiFileCopyLine } from "react-icons/ri";
 import { BiBuildingHouse } from "react-icons/bi";
 import { cn } from "@/lib/utils";
+import { CiRedo } from "react-icons/ci";
 import { Loader2, Lock } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -545,13 +546,7 @@ export default function DashboardPage() {
                         fill="none"
                         xmlns="http://www.w3.org/2000/svg"
                       >
-                        <path
-                          d="M4.5 2V5.5M4.5 5.5C6.5 3.5 9.5 3.5 11.5 5.5C13.5 7.5 13.5 10.5 11.5 12.5L4.5 19.5M4.5 5.5H1M15.5 18V14.5M15.5 14.5C13.5 16.5 10.5 16.5 8.5 14.5C6.5 12.5 6.5 9.5 8.5 7.5L15.5 0.5M15.5 14.5H19"
-                          stroke="#6B7280"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
+                      <CiRedo size={20} /> 
                       </svg>
                     </button>
                   </div>
