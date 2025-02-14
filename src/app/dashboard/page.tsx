@@ -235,6 +235,19 @@ export default function DashboardPage() {
     // TODO: Add toast notification
   };
 
+  const handleClear = () => {
+    setSelectedPrompt("");
+    setCustomPrompt("");
+    setGeneratedEssay("");
+    setQuestionnaireData({
+      academicInterests: "",
+      significantExperience: "",
+      personalGrowth: "",
+      futureGoals: "",
+      challengesOvercome: "",
+    });
+  };
+
   const handleGenerateActivities = async () => {
     try {
       setIsGenerating(true);
@@ -564,22 +577,37 @@ export default function DashboardPage() {
                       <button
                         onClick={handleCopy}
                         className="rounded-full hover:bg-[#F3F4F6] p-2 transition-colors"
+                        title="Copy to clipboard"
                       >
                         <RiFileCopyLine className="h-5 w-5 text-[#6B7280]" />
+                      </button>
+                      <button
+                        onClick={handleClear}
+                        className="rounded-full hover:bg-[#F3F4F6] p-2 transition-colors"
+                        title="Clear all"
+                      >
+                        <svg
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="text-[#6B7280]"
+                        >
+                          <path
+                            d="M4 6H20M16 6L15.7294 5.18807C15.4671 4.40125 15.3359 4.00784 15.0927 3.71698C14.8779 3.46013 14.6021 3.26132 14.2905 3.13878C13.9376 3 13.523 3 12.6936 3H11.3064C10.477 3 10.0624 3 9.70951 3.13878C9.39792 3.26132 9.12208 3.46013 8.90729 3.71698C8.66405 4.00784 8.53292 4.40125 8.27064 5.18807L8 6M18 6V16.2C18 17.8802 18 18.7202 17.673 19.362C17.3854 19.9265 16.9265 20.3854 16.362 20.673C15.7202 21 14.8802 21 13.2 21H10.8C9.11984 21 8.27976 21 7.63803 20.673C7.07354 20.3854 6.6146 19.9265 6.32698 19.362C6 18.7202 6 17.8802 6 16.2V6M14 10V17M10 10V17"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
                       </button>
                       <button
                         onClick={handleRegenerate}
                         className="rounded-full hover:bg-[#F3F4F6] p-2 transition-colors"
                       >
-                        <svg
-                          width="20"
-                          height="20"
-                          viewBox="0 0 20 20"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <CiRedo size={20} />
-                        </svg>
+                        <CiRedo className="h-5 w-5 text-[#6B7280]" />
                       </button>
                     </div>
                     <div className="min-h-[300px] whitespace-pre-wrap text-base leading-relaxed text-black">
@@ -816,7 +844,7 @@ export default function DashboardPage() {
 
                   {activities.activity.length > 0 && (
                     <div className="space-y-6">
-                      {/* Activity Section */}
+                      {/* Activity Section - Visible to all */}
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <h3 className="text-xl font-medium text-black">
@@ -828,37 +856,17 @@ export default function DashboardPage() {
                           {activities.activity.map((activity, index) => (
                             <div
                               key={index}
-                              className={cn(
-                                "mb-4 rounded-[24px] border border-[#E5E7EB] bg-white p-6",
-                                !isPremium &&
-                                  index >= 3 &&
-                                  "blur-[2px] pointer-events-none"
-                              )}
+                              className="mb-4 rounded-[24px] border border-[#E5E7EB] bg-white p-6"
                             >
                               <div className="mb-4 flex justify-end gap-2">
                                 <button className="rounded-full hover:bg-[#F3F4F6] p-2 transition-colors">
                                   <RiFileCopyLine className="h-5 w-5 text-[#6B7280]" />
                                 </button>
                                 <button
-                                  onClick={() =>
-                                    !isPremium && setShowUpgradeModal(true)
-                                  }
+                                  onClick={handleGenerateActivities}
                                   className="rounded-full hover:bg-[#F3F4F6] p-2 transition-colors"
                                 >
-                                  <svg
-                                    width="20"
-                                    height="20"
-                                    viewBox="0 0 20 20"
-                                    fill="none"
-                                  >
-                                    <path
-                                      d="M4.5 2V5.5M4.5 5.5C6.5 3.5 9.5 3.5 11.5 5.5C13.5 7.5 13.5 10.5 11.5 12.5L4.5 19.5M4.5 5.5H1M15.5 18V14.5M15.5 14.5C13.5 16.5 10.5 16.5 8.5 14.5C6.5 12.5 6.5 9.5 8.5 7.5L15.5 0.5M15.5 14.5H19"
-                                      stroke="#6B7280"
-                                      strokeWidth="1.5"
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                    />
-                                  </svg>
+                                  <CiRedo className="h-5 w-5 text-[#6B7280]" />
                                 </button>
                               </div>
                               <div className="whitespace-pre-wrap text-base leading-relaxed text-black">
@@ -869,49 +877,34 @@ export default function DashboardPage() {
                         </div>
                       </div>
 
-                      {/* Creativity Section */}
-                      <div className="space-y-4">
+                      {/* Creativity Section - Blurred for free users */}
+                      <div className="space-y-4 relative">
                         <div className="flex items-center justify-between">
                           <h3 className="text-xl font-medium text-black">
                             CREATIVITY
                           </h3>
                           <div className="text-2xl text-[#6B7280]">2</div>
                         </div>
-                        <div className="relative">
+                        <div
+                          className={cn(
+                            "relative",
+                            plan === "free" && "blur-[2px] pointer-events-none"
+                          )}
+                        >
                           {activities.creativity.map((activity, index) => (
                             <div
                               key={index}
-                              className={cn(
-                                "mb-4 rounded-[24px] border border-[#E5E7EB] bg-white p-6",
-                                !isPremium &&
-                                  index >= 3 &&
-                                  "blur-[2px] pointer-events-none"
-                              )}
+                              className="mb-4 rounded-[24px] border border-[#E5E7EB] bg-white p-6"
                             >
                               <div className="mb-4 flex justify-end gap-2">
                                 <button className="rounded-full hover:bg-[#F3F4F6] p-2 transition-colors">
                                   <RiFileCopyLine className="h-5 w-5 text-[#6B7280]" />
                                 </button>
                                 <button
-                                  onClick={() =>
-                                    !isPremium && setShowUpgradeModal(true)
-                                  }
+                                  onClick={handleGenerateActivities}
                                   className="rounded-full hover:bg-[#F3F4F6] p-2 transition-colors"
                                 >
-                                  <svg
-                                    width="20"
-                                    height="20"
-                                    viewBox="0 0 20 20"
-                                    fill="none"
-                                  >
-                                    <path
-                                      d="M4.5 2V5.5M4.5 5.5C6.5 3.5 9.5 3.5 11.5 5.5C13.5 7.5 13.5 10.5 11.5 12.5L4.5 19.5M4.5 5.5H1M15.5 18V14.5M15.5 14.5C13.5 16.5 10.5 16.5 8.5 14.5C6.5 12.5 6.5 9.5 8.5 7.5L15.5 0.5M15.5 14.5H19"
-                                      stroke="#6B7280"
-                                      strokeWidth="1.5"
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                    />
-                                  </svg>
+                                  <CiRedo className="h-5 w-5 text-[#6B7280]" />
                                 </button>
                               </div>
                               <div className="whitespace-pre-wrap text-base leading-relaxed text-black">
@@ -920,51 +913,53 @@ export default function DashboardPage() {
                             </div>
                           ))}
                         </div>
+                        {plan === "free" && (
+                          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-[2px]">
+                            <div className="text-center">
+                              <Lock className="w-12 h-12 text-[#7857FF] mx-auto mb-4" />
+                              <p className="text-lg font-medium text-black mb-4">
+                                Upgrade to Premium to unlock Creativity
+                                activities
+                              </p>
+                              <Button
+                                onClick={() => router.push("/payment")}
+                                className="rounded-full bg-[#7857FF] hover:bg-[#6544FF] text-white px-8"
+                              >
+                                Upgrade Now
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
-                      {/* Service Section */}
-                      <div className="space-y-4">
+                      {/* Service Section - Blurred for free users */}
+                      <div className="space-y-4 relative">
                         <div className="flex items-center justify-between">
                           <h3 className="text-xl font-medium text-black">
                             SERVICE
                           </h3>
                           <div className="text-2xl text-[#6B7280]">3</div>
                         </div>
-                        <div className="relative">
+                        <div
+                          className={cn(
+                            "relative",
+                            plan === "free" && "blur-[2px] pointer-events-none"
+                          )}
+                        >
                           {activities.service.map((activity, index) => (
                             <div
                               key={index}
-                              className={cn(
-                                "mb-4 rounded-[24px] border border-[#E5E7EB] bg-white p-6",
-                                !isPremium &&
-                                  index >= 3 &&
-                                  "blur-[2px] pointer-events-none"
-                              )}
+                              className="mb-4 rounded-[24px] border border-[#E5E7EB] bg-white p-6"
                             >
                               <div className="mb-4 flex justify-end gap-2">
                                 <button className="rounded-full hover:bg-[#F3F4F6] p-2 transition-colors">
                                   <RiFileCopyLine className="h-5 w-5 text-[#6B7280]" />
                                 </button>
                                 <button
-                                  onClick={() =>
-                                    !isPremium && setShowUpgradeModal(true)
-                                  }
+                                  onClick={handleGenerateActivities}
                                   className="rounded-full hover:bg-[#F3F4F6] p-2 transition-colors"
                                 >
-                                  <svg
-                                    width="20"
-                                    height="20"
-                                    viewBox="0 0 20 20"
-                                    fill="none"
-                                  >
-                                    <path
-                                      d="M4.5 2V5.5M4.5 5.5C6.5 3.5 9.5 3.5 11.5 5.5C13.5 7.5 13.5 10.5 11.5 12.5L4.5 19.5M4.5 5.5H1M15.5 18V14.5M15.5 14.5C13.5 16.5 10.5 16.5 8.5 14.5C6.5 12.5 6.5 9.5 8.5 7.5L15.5 0.5M15.5 14.5H19"
-                                      stroke="#6B7280"
-                                      strokeWidth="1.5"
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                    />
-                                  </svg>
+                                  <CiRedo className="h-5 w-5 text-[#6B7280]" />
                                 </button>
                               </div>
                               <div className="whitespace-pre-wrap text-base leading-relaxed text-black">
@@ -972,23 +967,23 @@ export default function DashboardPage() {
                               </div>
                             </div>
                           ))}
-
-                          {!isPremium && (
-                            <div className="absolute inset-0 flex items-center justify-center top-[200px]">
-                              <div className="text-center">
-                                <p className="text-lg font-medium text-black mb-4">
-                                  Upgrade to Premium to unlock all activities
-                                </p>
-                                <button
-                                  onClick={() => setShowUpgradeModal(true)}
-                                  className="rounded-full bg-[#7C3AED] px-8 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-                                >
-                                  Upgrade Now
-                                </button>
-                              </div>
-                            </div>
-                          )}
                         </div>
+                        {plan === "free" && (
+                          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-[2px]">
+                            <div className="text-center">
+                              <Lock className="w-12 h-12 text-[#7857FF] mx-auto mb-4" />
+                              <p className="text-lg font-medium text-black mb-4">
+                                Upgrade to Premium to unlock Service activities
+                              </p>
+                              <Button
+                                onClick={() => router.push("/payment")}
+                                className="rounded-full bg-[#7857FF] hover:bg-[#6544FF] text-white px-8"
+                              >
+                                Upgrade Now
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -997,8 +992,82 @@ export default function DashboardPage() {
             )}
 
             {activeTab === "recommendation" && (
-              <div className="space-y-4">
-                <RecommendationForm isPremium={isPremium} />
+              <div className="space-y-8">
+                <div className="rounded-full bg-[#F3F4F6] px-6 py-2 text-sm font-medium text-black w-fit">
+                  RECOMMENDATION LETTERS
+                </div>
+
+                {plan === "free" ? (
+                  <div className="relative">
+                    {/* Blurred Content */}
+                    <div className="blur-[2px] pointer-events-none">
+                      <div className="space-y-6">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+                          <div className="w-full sm:w-[300px] space-y-2">
+                            <span className="text-sm font-medium text-black">
+                              Recommender's Name:
+                            </span>
+                            <Input
+                              className="w-full rounded-full border-[#E5E7EB] bg-white h-10"
+                              placeholder="Type..."
+                              disabled
+                            />
+                          </div>
+                          <div className="w-full sm:w-[200px] space-y-2">
+                            <span className="text-sm font-medium text-black">
+                              Title/Position:
+                            </span>
+                            <Input
+                              className="w-full rounded-full border-[#E5E7EB] bg-white h-10"
+                              placeholder="Type..."
+                              disabled
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <span className="text-sm font-medium text-black">
+                            Relationship Duration:
+                          </span>
+                          <Input
+                            className="w-full rounded-full border-[#E5E7EB] bg-white h-10"
+                            placeholder="Type..."
+                            disabled
+                          />
+                        </div>
+                        <button
+                          className="rounded-full bg-[#7C3AED] px-8 py-2 text-sm font-medium text-white opacity-50"
+                          disabled
+                        >
+                          GENERATE
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Upgrade Overlay */}
+                    <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center">
+                      <div className="bg-white p-6 rounded-lg shadow-lg text-center max-w-md">
+                        <Lock className="w-12 h-12 text-[#7857FF] mx-auto mb-4" />
+                        <h3 className="text-xl font-semibold mb-2">
+                          Premium Feature
+                        </h3>
+                        <p className="text-gray-600 mb-4">
+                          Upgrade to Premium to generate AI-powered
+                          recommendation letters
+                        </p>
+                        <Button
+                          asChild
+                          className="bg-[#7857FF] hover:bg-[#6544FF] text-white rounded-full px-8"
+                        >
+                          <Link href="/payment">Upgrade Now</Link>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <RecommendationForm isPremium={isPremium} />
+                  </div>
+                )}
               </div>
             )}
 
@@ -1011,7 +1080,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="mt-4 text-center text-sm text-[#9CA3AF]">
-          © 2024 Admit.uz. All rights reserved
+          © 2025 Admit.uz. All rights reserved
         </div>
 
         {/* Upgrade Modal */}
