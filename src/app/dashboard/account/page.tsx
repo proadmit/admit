@@ -1,6 +1,6 @@
 "use client";
 
-import { useUser } from "@clerk/nextjs";
+import { useUser, useClerk } from "@clerk/nextjs";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/toast/use-toast";
@@ -20,6 +20,7 @@ import { Loader2 } from "lucide-react";
 export default function AccountPage() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
+  const clerk = useClerk();
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState({
@@ -214,6 +215,35 @@ export default function AccountPage() {
     }
   };
 
+  const handlePasswordReset = async () => {
+    try {
+      if (!user?.emailAddresses?.[0]?.emailAddress) {
+        toast({
+          title: "Error",
+          description: "No email address found",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await clerk.signOut();
+      
+      router.push(`/auth/sign-in?reset_password=${user.emailAddresses[0].emailAddress}`);
+      
+      toast({
+        title: "Success",
+        description: "You will be redirected to reset your password",
+      });
+    } catch (error) {
+      console.error("Error requesting password reset:", error);
+      toast({
+        title: "Error",
+        description: "Failed to initiate password reset. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="container max-w-4xl py-8">
       <h1 className="text-3xl font-bold mb-8">Account Settings</h1>
@@ -336,9 +366,10 @@ export default function AccountPage() {
           <CardContent className="space-y-4">
             <Button
               variant="outline"
-              onClick={() => user?.createPasswordResetFlow()}
+              onClick={handlePasswordReset}
+              className="w-full sm:w-auto"
             >
-              Change Password
+              Reset Password
             </Button>
           </CardContent>
         </Card>
