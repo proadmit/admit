@@ -24,6 +24,8 @@ export default function SignUpPage() {
             footerActionLink: "text-primary hover:text-primary/90",
           },
         }}
+        signUpUrl="/auth/sign-up"
+        afterSignUpUrl="/personal-info"
       />
     </div>
   );

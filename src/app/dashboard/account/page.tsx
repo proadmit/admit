@@ -1,9 +1,9 @@
 "use client";
 
 import { useUser } from "@clerk/nextjs";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +22,28 @@ export default function AccountPage() {
   const { user, isLoaded } = useUser();
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: user?.firstName || "",
+    lastName: user?.lastName || "",
+  });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Update form data when user data is loaded
+  useEffect(() => {
+    if (isLoaded && user) {
+      console.log("Initial user data:", {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        fullName: user.fullName,
+        metadata: user.unsafeMetadata,
+      });
+
+      setFormData({
+        firstName: user.unsafeMetadata?.name || "",
+        lastName: user.unsafeMetadata?.surname || "",
+      });
+    }
+  }, [isLoaded, user]);
 
   if (!isLoaded) {
     return (
@@ -31,27 +53,89 @@ export default function AccountPage() {
     );
   }
 
-  const handleUpdateProfile = async (
-    event: React.FormEvent<HTMLFormElement>
-  ) => {
-    event.preventDefault();
-    setIsUpdating(true);
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "User not found. Please try logging in again.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
-      const formData = new FormData(event.currentTarget);
-      const firstName = formData.get("firstName") as string;
-      const lastName = formData.get("lastName") as string;
+      setIsUpdating(true);
 
-      await user?.update({
-        firstName,
-        lastName,
+      const firstName = formData.firstName.trim();
+      const lastName = formData.lastName.trim();
+
+      // Validate input
+      if (!firstName || !lastName) {
+        toast({
+          title: "Error",
+          description: "First name and last name are required",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Get current metadata
+      const currentMetadata = user.unsafeMetadata || {};
+
+      // Prepare update data
+      const updateData = {
+        unsafeMetadata: {
+          ...currentMetadata,
+          name: firstName,
+          surname: lastName,
+          hasCompletedPersonalInfo: true,
+        }
+      };
+
+      console.log('Updating with data:', updateData);
+
+      // Attempt update with retry logic
+      let retryCount = 0;
+      const maxRetries = 3;
+
+      while (retryCount < maxRetries) {
+        try {
+          await user.update(updateData);
+          console.log('Update successful');
+          
+          toast({
+            title: "Success",
+            description: "Profile updated successfully",
+          });
+          
+          router.refresh();
+          break;
+        } catch (updateError: any) {
+          console.error(`Update attempt ${retryCount + 1} failed:`, updateError);
+          
+          if (retryCount === maxRetries - 1) {
+            throw updateError; // Throw on last retry
+          }
+          
+          retryCount++;
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+        }
+      }
+    } catch (error: any) {
+      console.error("Error updating profile:", {
+        error,
+        message: error.message,
+        status: error.status,
+        data: error.data
       });
-
-      toast.success("Profile updated successfully");
-      router.refresh();
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      toast.error("Failed to update profile");
+      
+      toast({
+        title: "Error",
+        description: "Failed to update profile. Please check your internet connection and try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsUpdating(false);
     }
@@ -71,12 +155,62 @@ export default function AccountPage() {
     try {
       await user?.delete();
       router.push("/");
-      toast.success("Account deleted successfully");
+      toast({
+        title: "Success",
+        description: "Account deleted successfully",
+      });
     } catch (error) {
       console.error("Error deleting account:", error);
-      toast.error("Failed to delete account");
+      toast({
+        title: "Error",
+        description: "Failed to delete account. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    try {
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Error",
+          description: "Please select an image file",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "Error",
+          description: "Image must be less than 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await user.setProfileImage({ file });
+      
+      toast({
+        title: "Success",
+        description: "Profile picture updated successfully",
+      });
+      
+      router.refresh();
+    } catch (error) {
+      console.error("Error updating profile image:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update profile picture. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -104,12 +238,30 @@ export default function AccountPage() {
                     {user?.lastName?.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
-                <Button
-                  variant="outline"
-                  onClick={() => user?.setProfileImage({ file: undefined })}
-                >
-                  Change Avatar
-                </Button>
+                <div>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    Change Avatar
+                  </Button>
+                  {user?.imageUrl && (
+                    <Button
+                      variant="ghost"
+                      className="text-red-500 hover:text-red-600 ml-2"
+                      onClick={() => user.setProfileImage({ file: null })}
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -120,8 +272,13 @@ export default function AccountPage() {
                   <Input
                     id="firstName"
                     name="firstName"
-                    defaultValue={user?.firstName || ""}
+                    value={formData.firstName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, firstName: e.target.value })
+                    }
                     required
+                    className="w-full rounded-lg border p-2"
+                    disabled={isUpdating}
                   />
                 </div>
                 <div className="space-y-2">
@@ -129,8 +286,13 @@ export default function AccountPage() {
                   <Input
                     id="lastName"
                     name="lastName"
-                    defaultValue={user?.lastName || ""}
+                    value={formData.lastName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, lastName: e.target.value })
+                    }
                     required
+                    className="w-full rounded-lg border p-2"
+                    disabled={isUpdating}
                   />
                 </div>
               </div>
@@ -145,11 +307,19 @@ export default function AccountPage() {
                 />
               </div>
 
-              <Button type="submit" disabled={isUpdating}>
-                {isUpdating && (
+              <Button
+                type="submit"
+                disabled={isUpdating}
+                className="w-full rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+              >
+                {isUpdating ? (
+                  <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  "Update Profile"
                 )}
-                Save Changes
               </Button>
             </form>
           </CardContent>

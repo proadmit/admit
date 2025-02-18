@@ -11,53 +11,62 @@ const openai = new OpenAI({
 export async function POST(req: Request) {
   try {
     const { userId } = auth();
+    
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const { prompt, customPrompt } = await req.json();
+    const {
+      prompt,
+      customPrompt,
+      questionnaireData,
+      userInfo
+    } = await req.json();
 
-    if (!prompt) {
-      return new NextResponse("Missing required fields", { status: 400 });
-    }
+    // Construct a detailed prompt using all available information
+    const systemPrompt = `You are a college admissions essay expert. Generate a personal statement that:
+    1. Addresses the prompt authentically and personally
+    2. Shows, doesn't tell, through specific examples
+    3. Maintains the student's voice
+    4. Demonstrates reflection and growth
+    5. Stays within 650 words
 
-    const systemPrompt = `You are a highly skilled college admissions essay writer. Write a personal statement essay that responds to the following prompt. The essay should be personal, engaging, and showcase unique qualities.
+    Student Information:
+    - Gender: ${userInfo.gender || 'Not specified'}
+    - Country: ${userInfo.country || 'Not specified'}
+    - Major Interest: ${userInfo.major || 'Not specified'}
+    - Academic Background: ${userInfo.academics || 'Not specified'}
 
-Essay prompt: ${customPrompt || prompt}
+    Additional Context from Student Questionnaire:
+    - Academic Interests: ${questionnaireData.academicInterests}
+    - Significant Experience: ${questionnaireData.significantExperience}
+    - Personal Growth: ${questionnaireData.personalGrowth}
+    - Future Goals: ${questionnaireData.futureGoals}
+    - Challenges Overcome: ${questionnaireData.challengesOvercome}
 
-Guidelines:
-- Stay within 650 words (Common App limit)
-- Be personal and specific
-- Show, don't tell
-- Focus on personal growth and learning
-- Maintain a clear narrative structure
-- Use vivid details and examples
-- End with a strong conclusion
-- Demonstrate authenticity and self-reflection`;
+    Essay Prompt: ${customPrompt || prompt}`;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+    const response = await openai.chat.completions.create({
+      model: "gpt-4-turbo-preview",
       messages: [
         {
           role: "system",
-          content: systemPrompt,
+          content: systemPrompt
         },
+        {
+          role: "user",
+          content: "Generate a personal, authentic, and reflective college essay based on the provided information."
+        }
       ],
       temperature: 0.7,
-      max_tokens: 1500, // Approximately 650 words
+      max_tokens: 1200,
     });
 
-    const essay = completion.choices[0].message.content;
+    const essay = response.choices[0].message.content;
 
-    return new NextResponse(JSON.stringify({ essay }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    return NextResponse.json({ essay });
   } catch (error) {
-    console.error("Error generating personal statement:", error);
-    return new NextResponse(
-      JSON.stringify({ error: "Failed to generate personal statement" }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+    console.error("[PERSONAL_STATEMENT_ERROR]", error);
+    return new NextResponse("Internal Error", { status: 500 });
   }
 } 

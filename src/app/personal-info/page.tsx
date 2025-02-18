@@ -48,8 +48,20 @@ const allCountries = countries.map((country) => ({
 
 export default function PersonalInfoPage() {
   const router = useRouter();
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isLoaded && user) {
+      console.log("New User Data:", {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.primaryEmailAddress,
+        metadata: user.unsafeMetadata,
+      });
+    }
+  }, [isLoaded, user]);
 
   // Redirect to dashboard if personal info is already completed
   // useEffect(() => {
