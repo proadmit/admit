@@ -143,6 +143,10 @@ export default function DashboardPage() {
     }
   );
   const [generationAttempts, setGenerationAttempts] = useState(0);
+  const [isGeneratingEssay, setIsGeneratingEssay] = useState(false);
+  const [isGeneratingExtracurricular, setIsGeneratingExtracurricular] = useState(false);
+  const [isGeneratingCollegeList, setIsGeneratingCollegeList] = useState(false);
+  const [isGeneratingRecommendation, setIsGeneratingRecommendation] = useState(false);
 
   // Handle mounting
   useEffect(() => {
@@ -188,19 +192,32 @@ export default function DashboardPage() {
       return;
     }
 
-    // Check if this is a second attempt for free users
-    if (plan === "free" && generationAttempts > 0) {
-      router.push("/payment");
-      return;
-    }
+    setIsGenerating(true);
+    
+    try {
+      // Check if this is a second attempt for free users
+      if (plan === "free" && generationAttempts > 0) {
+        router.push("/payment");
+        return;
+      }
 
-    // Show questionnaire to gather more information
-    setShowQuestionnaire(true);
+      // Show questionnaire to gather more information
+      setShowQuestionnaire(true);
+    } catch (error) {
+      console.error("Error generating personal statement:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate personal statement. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleGenerateWithQuestionnaire = async () => {
     try {
-    setIsGenerating(true);
+      setIsGenerating(true);
       setShowQuestionnaire(false);
 
       const promptText =
@@ -275,7 +292,7 @@ export default function DashboardPage() {
 
   const handleGenerateActivities = async () => {
     try {
-    setIsGenerating(true);
+      setIsGenerating(true);
       const response = await fetch("/api/generate-activities", {
         method: "POST",
         headers: {
@@ -578,13 +595,18 @@ export default function DashboardPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <button
+                  <Button
                     onClick={handleGenerate}
                     disabled={!selectedPrompt || isGenerating}
                     className="w-full sm:w-auto rounded-full bg-[#7C3AED] px-8 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 whitespace-nowrap"
                   >
-                    {isGenerating ? "Generating..." : "GENERATE"}
-                  </button>
+                    {isGenerating ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Generating...
+                      </div>
+                    ) : "GENERATE"}
+                  </Button>
                 </div>
 
                 {selectedPrompt === "7" && (
@@ -599,7 +621,23 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {selectedPrompt && !isGenerating && (
+              {isGeneratingEssay && (
+                <div className="mt-8 rounded-[24px] border border-[#E5E7EB] bg-white p-8">
+                  <div className="flex flex-col items-center justify-center min-h-[300px]">
+                    <div className="flex flex-col items-center space-y-4">
+                      <Loader2 className="h-8 w-8 animate-spin text-[#7857FF]" />
+                      <div className="text-center space-y-2">
+                        <p className="text-lg font-medium text-gray-900">Generating Your Essay</p>
+                        <p className="text-sm text-gray-500">
+                          This might take a minute. We're crafting a personalized essay based on your information...
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!isGeneratingEssay && generatedEssay && (
                 <div className="rounded-[24px] border border-[#E5E7EB] bg-white p-6">
                   <div className="mb-4 flex justify-end gap-2">
                     <button
@@ -768,8 +806,8 @@ export default function DashboardPage() {
                           })
                         }
                       className="w-full rounded-full border-[#E5E7EB] bg-white h-10 hover:border-[#7C3AED] transition-colors focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]"
-                      placeholder="Type..."
-                    />
+                        placeholder="Type..."
+                      />
                   </div>
                     <button
                       onClick={handleGenerateSupplementalEssay}
@@ -1101,7 +1139,27 @@ export default function DashboardPage() {
 
           {activeTab === "college-list" && (
               <div className="max-w-6xl mx-auto">
-                <CollegeListForm isPremium={isPremium} />
+                {isGeneratingCollegeList ? (
+                  <div className="rounded-[24px] border border-[#E5E7EB] bg-white p-8">
+                    <div className="flex flex-col items-center justify-center min-h-[300px]">
+                      <div className="flex flex-col items-center space-y-4">
+                        <Loader2 className="h-8 w-8 animate-spin text-[#7857FF]" />
+                        <div className="text-center space-y-2">
+                          <p className="text-lg font-medium text-gray-900">Building Your College List</p>
+                          <p className="text-sm text-gray-500">
+                            Analyzing your profile to find the best college matches...
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <CollegeListForm 
+                    isPremium={isPremium} 
+                    isGenerating={isGeneratingCollegeList}
+                    setIsGenerating={setIsGeneratingCollegeList}
+                  />
+                )}
             </div>
           )}
         </main>
@@ -1268,10 +1326,10 @@ export default function DashboardPage() {
                   className="rounded-full bg-[#7C3AED] text-white hover:opacity-90"
                 >
                   {isGenerating ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
                       Generating...
-                    </>
+                    </div>
                   ) : (
                     "Generate Essay"
                   )}
