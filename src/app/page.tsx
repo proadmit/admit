@@ -70,26 +70,26 @@ export default async function HomePage() {
           <div className="relative w-full max-w-[600px] mx-auto">
             {/* Feature Cards Grid */}
             <div className="grid grid-cols-2 md:gap-6 gap-3 relative">
-              <div className="bg-white rounded-[32px] md:p-8 md:p-4 p-6 shadow-lg">
-                <h3 className="text-[#00000047] md:text-xl font-semibold mb-4">
+              <div className="bg-white rounded-[32px] md:p-8 md:p-4 py-6 px-2 shadow-lg">
+                <h3 className="text-[#00000047] md:text-xl text-[10px] md:font-semibold mb-4">
                   PERSONAL STATEMENT
                 </h3>
                 <HiOutlineDocumentText className="md:w-8 md:h-8 w-6 h-6 text-[#00000047]" />
               </div>
-              <div className="bg-white rounded-[32px] md:p-8 md:p-4 p-6 shadow-lg">
-                <h3 className="text-[#00000047] md:text-xl font-semibold md:mb-4 mb-2">
+              <div className="bg-white rounded-[32px] md:p-8 md:p-4 py-6 px-2 shadow-lg">
+                <h3 className="text-[#00000047] md:text-xl text-[10px] md:font-semibold md:mb-4 mb-2">
                   EXTRA CURRICULAR ACTIVITIES
                 </h3>
                 <IoPersonOutline className="md:w-8 md:h-8 w-6 h-6 text-[#00000047]" />
               </div>
-              <div className="bg-white rounded-[32px] md:p-8 md:p-4 p-6 shadow-lg">
-                <h3 className="text-[#00000047] md:text-xl font-semibold mb-4">
-                  ENDORSEMENT LETTERS
+              <div className="bg-white rounded-[32px] md:p-8 md:p-4 py-6 px-2 shadow-lg">
+                <h3 className="text-[#00000047] md:text-xl text-[10px] md:font-semibold mb-4">
+                  RECOMMENDATION LETTERS
                 </h3>
                 <HiOutlineMail className="md:w-8 md:h-8 w-6 h-6 text-[#00000047]" />
               </div>
-              <div className="bg-white rounded-[32px] md:p-8 md:p-4 p-6 shadow-lg">
-                <h3 className="text-[#00000047] md:text-xl font-semibold mb-4">
+              <div className="bg-white rounded-[32px] md:p-8 md:p-4 py-6 px-2 shadow-lg">
+                <h3 className="text-[#00000047] md:text-xl text-[10px] md:font-semibold mb-4">
                   SUPPLEMENTAL ESSAYS
                 </h3>
                 <RiFileTextLine className="md:w-8 md:h-8 w-6 h-6 text-[#00000047]" />

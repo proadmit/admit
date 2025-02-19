@@ -408,6 +408,27 @@ export default function DashboardPage() {
   const userEmail = user?.primaryEmailAddress?.emailAddress || "";
   const currentPlan = plan || "Free Plan";
 
+  // Add this CSS class for premium content
+  const premiumContentClass = cn(
+    "relative",
+    !isPremium && "select-none" // Prevent text selection for free users
+  );
+
+  // Add this component for premium content overlay
+  const PremiumOverlay = () => (
+    <div 
+      className="absolute inset-0 bg-gradient-to-b from-transparent to-white/90 flex items-end justify-center pb-8"
+      onClick={() => router.push("/payment")}
+    >
+      <Button 
+        className="bg-gradient-to-r from-[#608aff] to-[#ba7dff] text-white px-8 py-2 rounded-full"
+        onClick={() => router.push("/payment")}
+      >
+        Upgrade to Copy
+      </Button>
+    </div>
+  );
+
   return (
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
@@ -1154,11 +1175,14 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 ) : (
-                  <CollegeListForm 
-                    isPremium={isPremium} 
-                    isGenerating={isGeneratingCollegeList}
-                    setIsGenerating={setIsGeneratingCollegeList}
-                  />
+                  <div className={premiumContentClass}>
+                    <CollegeListForm 
+                      isPremium={isPremium} 
+                      isGenerating={isGeneratingCollegeList}
+                      setIsGenerating={setIsGeneratingCollegeList}
+                    />
+                    {!isPremium && <PremiumOverlay />}
+                  </div>
                 )}
             </div>
           )}

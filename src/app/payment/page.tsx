@@ -13,6 +13,7 @@ import {
 } from "@stripe/react-stripe-js";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
@@ -35,6 +36,7 @@ function CheckoutForm({
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [couponCode, setCouponCode] = useState("");
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,6 +50,32 @@ function CheckoutForm({
     setError(null);
 
     try {
+      // First validate coupon if provided
+      if (couponCode.trim()) {
+        console.log("⭐ Attempting to validate coupon:", {
+          code: couponCode,
+          length: couponCode.length,
+          trimmed: couponCode.trim()
+        });
+        
+        const couponResponse = await fetch("/api/stripe/validate-coupon", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: couponCode }),
+        });
+
+        const couponData = await couponResponse.json();
+        console.log("⭐ Coupon validation response:", {
+          status: couponResponse.status,
+          ok: couponResponse.ok,
+          data: couponData
+        });
+
+        if (!couponResponse.ok) {
+          throw new Error(couponData.message || "Invalid coupon code");
+        }
+      }
+
       toast.loading("Processing your payment...");
 
       // Submit the payment form
@@ -56,12 +84,28 @@ function CheckoutForm({
         throw submitError;
       }
 
+      // Create payment intent with coupon
+      const createIntentResponse = await fetch("/api/stripe/create-payment-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          priceId,
+          couponCode: couponCode.trim() || undefined,
+        }),
+      });
+
+      if (!createIntentResponse.ok) {
+        throw new Error("Failed to create payment intent");
+      }
+
+      const { clientSecret } = await createIntentResponse.json();
+
       // Confirm the payment
-      const { error: paymentError, paymentIntent } =
-        await stripe.confirmPayment({
-          elements,
-          redirect: "if_required",
-        });
+      const { error: paymentError, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        clientSecret,
+        redirect: "if_required",
+      });
 
       if (paymentError) {
         throw paymentError;
@@ -107,19 +151,14 @@ function CheckoutForm({
         throw new Error(`Payment status: ${paymentIntent.status}`);
       }
     } catch (err: any) {
+      console.error("Detailed payment error:", {
+        error: err,
+        message: err.message,
+        stack: err.stack
+      });
       toast.dismiss();
       console.error("Payment error:", err);
-
-      // Show specific error messages based on the error type
-      if (err.type === "card_error" || err.type === "validation_error") {
-        toast.error(err.message || "Your card was declined");
-      } else if (err.message.includes("subscription")) {
-        toast.error("Failed to update subscription. Please contact support.");
-      } else {
-        toast.error(err.message || "Payment failed. Please try again.");
-      }
-
-      setError(err.message || "Something went wrong");
+      setError(err.message || "Payment failed. Please try again.");
     } finally {
       setIsProcessing(false);
     }
@@ -128,11 +167,30 @@ function CheckoutForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <PaymentElement />
+      
+      {/* Add coupon input */}
+      <div className="mt-4">
+        <label htmlFor="coupon" className="block text-sm font-medium text-gray-700 mb-1">
+          Have a coupon? (Optional)
+        </label>
+        <div className="flex gap-2">
+          <input
+            id="coupon"
+            type="text"
+            value={couponCode}
+            onChange={(e) => setCouponCode(e.target.value)}
+            placeholder="Enter coupon code"
+            className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#47B5FF] focus:border-transparent"
+          />
+        </div>
+      </div>
+
       {error && (
         <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">
           {error}
         </div>
       )}
+
       <div className="flex gap-3">
         <button
           type="submit"
@@ -150,10 +208,7 @@ function CheckoutForm({
         </button>
         <button
           type="button"
-          onClick={() => {
-            onClose();
-            toast.dismiss();
-          }}
+          onClick={onClose}
           className="flex-1 bg-gray-100 text-gray-600 rounded-full py-3 font-medium hover:bg-gray-200 transition-colors"
         >
           Cancel
@@ -224,6 +279,12 @@ export default function PaymentPage() {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [couponCode, setCouponCode] = useState("");
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+  const [validCoupon, setValidCoupon] = useState<{
+    discount: number;
+    discountType: 'percent' | 'fixed';
+  } | null>(null);
 
   useEffect(() => {
     async function loadSubscription() {
@@ -317,6 +378,50 @@ export default function PaymentPage() {
     }
   };
 
+  const validateCoupon = async () => {
+    if (!couponCode.trim()) return;
+
+    setIsValidatingCoupon(true);
+    try {
+      const response = await fetch("/api/stripe/validate-coupon", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: couponCode }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.valid) {
+        setValidCoupon({
+          discount: data.discount,
+          discountType: data.discountType,
+        });
+        toast({
+          title: "Success!",
+          description: data.message || `Coupon applied: ${data.discountType === 'percent' ? 
+            `${data.discount}% off` : 
+            `$${data.discount/100} off`}`,
+        });
+      } else {
+        setValidCoupon(null);
+        toast({
+          title: "Error",
+          description: data.message || "Invalid coupon code",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error validating coupon:", error);
+      toast({
+        title: "Error",
+        description: "Failed to validate coupon. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -324,8 +429,8 @@ export default function PaymentPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold text-center mb-12">
-            Upgrade your plan
-          </h1>
+        Upgrade your plan
+      </h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {PLANS.map((plan) => (
