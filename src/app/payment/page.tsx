@@ -50,14 +50,17 @@ function CheckoutForm({
     setError(null);
 
     try {
-      // First validate coupon if provided
+      // First submit the payment form
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        throw submitError;
+      }
+
+      let validatedCouponId;
+
+      // Then validate coupon if provided
       if (couponCode.trim()) {
-        console.log("⭐ Attempting to validate coupon:", {
-          code: couponCode,
-          length: couponCode.length,
-          trimmed: couponCode.trim()
-        });
-        
+        console.log("🎫 Validating coupon:", couponCode);
         const couponResponse = await fetch("/api/stripe/validate-coupon", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -65,100 +68,49 @@ function CheckoutForm({
         });
 
         const couponData = await couponResponse.json();
-        console.log("⭐ Coupon validation response:", {
-          status: couponResponse.status,
-          ok: couponResponse.ok,
-          data: couponData
-        });
+        console.log("✅ Coupon validation response:", couponData);
 
         if (!couponResponse.ok) {
           throw new Error(couponData.message || "Invalid coupon code");
         }
+
+        validatedCouponId = couponData.couponId;
       }
 
-      toast.loading("Processing your payment...");
-
-      // Submit the payment form
-      const { error: submitError } = await elements.submit();
-      if (submitError) {
-        throw submitError;
-      }
-
-      // Create payment intent with coupon
-      const createIntentResponse = await fetch("/api/stripe/create-payment-intent", {
+      // Create payment intent
+      const response = await fetch("/api/stripe/create-payment-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           priceId,
-          couponCode: couponCode.trim() || undefined,
+          couponCode: validatedCouponId,
         }),
       });
 
-      if (!createIntentResponse.ok) {
-        throw new Error("Failed to create payment intent");
+      const data = await response.json();
+      console.log("📦 Payment intent response:", data);
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create payment intent");
       }
 
-      const { clientSecret } = await createIntentResponse.json();
-
-      // Confirm the payment
-      const { error: paymentError, paymentIntent } = await stripe.confirmPayment({
+      // Finally confirm the payment
+      const { error: confirmError } = await stripe.confirmPayment({
         elements,
-        clientSecret,
-        redirect: "if_required",
+        clientSecret: data.clientSecret,
+        confirmParams: {
+          return_url: `${window.location.origin}/dashboard?success=true`,
+        },
       });
 
-      if (paymentError) {
-        throw paymentError;
+      if (confirmError) {
+        throw confirmError;
       }
 
-      if (!paymentIntent) {
-        throw new Error("Payment failed - No payment intent returned");
-      }
-
-      if (paymentIntent.status === "succeeded") {
-        toast.dismiss();
-        toast.loading("Payment successful! Upgrading your plan...");
-
-        // Update subscription in our database
-        const response = await fetch("/api/stripe/confirm-payment", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            paymentIntentId: paymentIntent.id,
-            priceId: priceId,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          console.error("Subscription update failed:", data);
-          throw new Error(
-            data.details || data.error || "Failed to update subscription"
-          );
-        }
-
-        toast.dismiss();
-        toast.success("Your plan has been upgraded successfully!");
-
-        // Redirect to dashboard after a short delay
-        setTimeout(() => {
-          router.push("/dashboard?success=true");
-        }, 1500);
-      } else {
-        throw new Error(`Payment status: ${paymentIntent.status}`);
-      }
     } catch (err: any) {
-      console.error("Detailed payment error:", {
-        error: err,
-        message: err.message,
-        stack: err.stack
-      });
-      toast.dismiss();
-      console.error("Payment error:", err);
+      console.error("💥 Payment error:", err);
       setError(err.message || "Payment failed. Please try again.");
+      toast.error(err.message || "Payment failed. Please try again.");
     } finally {
       setIsProcessing(false);
     }
@@ -429,8 +381,8 @@ export default function PaymentPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold text-center mb-12">
-        Upgrade your plan
-      </h1>
+            Upgrade your plan
+          </h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {PLANS.map((plan) => (

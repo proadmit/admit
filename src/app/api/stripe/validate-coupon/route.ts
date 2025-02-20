@@ -6,25 +6,16 @@ export async function POST(req: Request) {
   try {
     const { userId } = auth();
     if (!userId) {
-      console.log("Auth failed - no userId");
-      return new NextResponse("Unauthorized", { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
     const { code } = await req.json();
-    console.log("⭐ Validating coupon:", {
-      receivedCode: code,
-      type: typeof code,
-      length: code?.length
-    });
-
-    // Add this to check your Stripe connection
-    const testCoupon = await stripe.coupons.list({
-      limit: 1
-    });
-    console.log("⭐ Test coupon list:", testCoupon.data);
+    console.log("🔍 Validating coupon code:", code);
 
     if (!code) {
-      console.log("No coupon code provided");
       return NextResponse.json(
         { valid: false, message: "Coupon code is required" },
         { status: 400 }
@@ -32,69 +23,47 @@ export async function POST(req: Request) {
     }
 
     try {
-      // Log all available promotion codes
-      const allPromoCodes = await stripe.promotionCodes.list({
-        active: true,
-        limit: 100
-      });
-      console.log("Available promotion codes:", 
-        allPromoCodes.data.map(p => ({
-          code: p.code,
-          active: p.active,
-          couponId: p.coupon.id
-        }))
-      );
-
       // First try to find the promotion code
       const promotionCodes = await stripe.promotionCodes.list({
         code: code,
         active: true,
         limit: 1,
       });
-      console.log("Found promotion codes:", promotionCodes.data);
+      console.log("🎫 Found promotion codes:", promotionCodes.data);
 
       if (promotionCodes.data.length > 0) {
         const promoCode = promotionCodes.data[0];
         const coupon = await stripe.coupons.retrieve(promoCode.coupon.id);
-        console.log("Found coupon:", coupon);
+        console.log("✅ Found coupon:", coupon);
 
         return NextResponse.json({
           valid: true,
           discount: coupon.percent_off || coupon.amount_off,
           discountType: coupon.percent_off ? 'percent' : 'fixed',
-          message: "Coupon applied successfully"
+          message: "Coupon applied successfully",
+          couponId: coupon.id
         });
       }
 
-      // Log all available coupons
-      const allCoupons = await stripe.coupons.list({
+      // If no promotion code found, try direct coupon
+      const coupons = await stripe.coupons.list({
         limit: 100
       });
-      console.log("Available coupons:", 
-        allCoupons.data.map(c => ({
-          id: c.id,
-          valid: c.valid,
-          amount_off: c.amount_off,
-          percent_off: c.percent_off
-        }))
-      );
 
-      // If no promotion code found, try to find direct coupon
-      const coupon = allCoupons.data.find(
-        (c) => c.id === code
+      const coupon = coupons.data.find(
+        (c) => c.id.toLowerCase() === code.toLowerCase()
       );
-      console.log("Found direct coupon:", coupon);
 
       if (coupon && coupon.valid) {
         return NextResponse.json({
           valid: true,
           discount: coupon.percent_off || coupon.amount_off,
           discountType: coupon.percent_off ? 'percent' : 'fixed',
-          message: "Coupon applied successfully"
+          message: "Coupon applied successfully",
+          couponId: coupon.id
         });
       }
 
-      console.log("No valid coupon found");
       return NextResponse.json(
         { 
           valid: false, 
@@ -103,8 +72,8 @@ export async function POST(req: Request) {
         { status: 400 }
       );
 
-    } catch (stripeError: any) {
-      console.error("Stripe error:", stripeError);
+    } catch (stripeError) {
+      console.error("❌ Stripe error:", stripeError);
       return NextResponse.json(
         { 
           valid: false, 
@@ -115,7 +84,7 @@ export async function POST(req: Request) {
     }
 
   } catch (error) {
-    console.error("Server error:", error);
+    console.error("💥 Server error:", error);
     return NextResponse.json(
       { 
         valid: false, 
