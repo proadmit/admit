@@ -58,15 +58,15 @@ async function updateSubscriptionInDB(subscription: Stripe.Subscription, userId:
 
 export async function POST(req: Request) {
   try {
-  const body = await req.text();
+    const body = await req.text();
     const signature = headers().get("Stripe-Signature");
 
     console.log('📥 Received webhook event');
 
-  if (!signature) {
+    if (!signature) {
       console.error('❌ No Stripe signature found');
       return NextResponse.json({ error: "No signature found" }, { status: 400 });
-  }
+    }
 
     const event = stripe.webhooks.constructEvent(
       body,
@@ -125,7 +125,7 @@ export async function POST(req: Request) {
               })
               .where(eq(subscriptions.userId, userId));
 
-        await db
+            await db
               .update(users)
               .set({
                 plan: 'free',
@@ -147,12 +147,43 @@ export async function POST(req: Request) {
 
       case "payment_intent.succeeded": {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        console.log('💰 Payment succeeded:', {
-          paymentIntentId: paymentIntent.id,
-          amount: paymentIntent.amount,
-          currency: paymentIntent.currency,
-          customerId: paymentIntent.customer
+        console.log("Payment succeeded - Full object:", paymentIntent);
+
+        const { userId, priceId } = paymentIntent.metadata;
+        console.log("Processing payment for user:", { userId, priceId });
+
+        try {
+          // Direct database update using the user ID from metadata
+          const newPlan = priceId.includes('yearly') ? 'yearly' : 'monthly';
+          
+          await db.update(users)
+            .set({
+              plan: newPlan,
+              updatedAt: new Date(),
+            })
+            .where(eq(users.id, userId)); // Using the database user ID
+
+          console.log("Updated plan for user:", {
+            userId,
+            newPlan
           });
+
+          // Verify the update
+          const updatedUser = await db.query.users.findFirst({
+            where: eq(users.id, userId),
+          });
+
+          console.log("Verified user update:", {
+            userId,
+            plan: updatedUser?.plan,
+            updatedAt: updatedUser?.updatedAt
+          });
+
+          return NextResponse.json({ success: true });
+        } catch (error) {
+          console.error("Error in webhook:", error);
+          throw error;
+        }
         break;
       }
 

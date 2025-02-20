@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useUser } from "@clerk/nextjs";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
@@ -34,6 +35,7 @@ function CheckoutForm({
 }) {
   const stripe = useStripe();
   const elements = useElements();
+  const { user } = useUser();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [couponCode, setCouponCode] = useState("");
@@ -41,7 +43,7 @@ function CheckoutForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stripe || !elements) {
+    if (!stripe || !elements || !user) {
       toast.error("Payment system not initialized");
       return;
     }
@@ -50,65 +52,95 @@ function CheckoutForm({
     setError(null);
 
     try {
-      // First submit the payment form
+      // Log the user info first
+      console.log("Starting payment process for user:", {
+        clerkId: user.id,
+        email: user.emailAddresses[0]?.emailAddress
+      });
+
       const { error: submitError } = await elements.submit();
       if (submitError) {
         throw submitError;
       }
 
-      let validatedCouponId;
-
-      // Then validate coupon if provided
-      if (couponCode.trim()) {
-        console.log("🎫 Validating coupon:", couponCode);
-        const couponResponse = await fetch("/api/stripe/validate-coupon", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code: couponCode }),
-        });
-
-        const couponData = await couponResponse.json();
-        console.log("✅ Coupon validation response:", couponData);
-
-        if (!couponResponse.ok) {
-          throw new Error(couponData.message || "Invalid coupon code");
-        }
-
-        validatedCouponId = couponData.couponId;
-      }
-
-      // Create payment intent
+      // Create payment intent with logging
+      console.log("Creating payment intent for:", { priceId });
       const response = await fetch("/api/stripe/create-payment-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           priceId,
-          couponCode: validatedCouponId,
+          userId: user.id,
         }),
       });
 
       const data = await response.json();
-      console.log("📦 Payment intent response:", data);
+      console.log("Payment intent response:", data);
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to create payment intent");
       }
 
-      // Finally confirm the payment
-      const { error: confirmError } = await stripe.confirmPayment({
+      toast.success("Processing payment...");
+
+      // Confirm payment with logging
+      console.log("Confirming payment...");
+      const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
         elements,
         clientSecret: data.clientSecret,
         confirmParams: {
-          return_url: `${window.location.origin}/dashboard?success=true`,
+          payment_method_data: {
+            billing_details: {
+              email: user.emailAddresses[0]?.emailAddress,
+            },
+          },
         },
+        redirect: "if_required",
       });
 
       if (confirmError) {
         throw confirmError;
       }
 
+      console.log("Payment confirmation result:", paymentIntent);
+
+      if (paymentIntent.status === "succeeded") {
+        toast.success("Payment successful! Updating your plan...");
+
+        // Update plan with detailed logging
+        console.log("Sending plan update request...");
+        const updateResponse = await fetch("/api/update-plan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            priceId,
+            paymentIntentId: paymentIntent.id // Add payment intent ID for tracking
+          }),
+        });
+
+        const updateData = await updateResponse.json();
+        console.log("Plan update response:", updateData);
+
+        if (!updateResponse.ok) {
+          throw new Error(updateData.error || "Failed to update plan");
+        }
+
+        // Verify the update immediately
+        console.log("Verifying plan update...");
+        const verifyResponse = await fetch("/api/subscription");
+        const verifyData = await verifyResponse.json();
+        console.log("Current subscription status:", verifyData);
+
+        if (verifyData.plan === "free") {
+          throw new Error("Plan update verification failed");
+        }
+
+        toast.success(`Successfully upgraded to ${updateData.plan} plan!`);
+        router.push("/dashboard?success=true");
+      }
+
     } catch (err: any) {
-      console.error("💥 Payment error:", err);
+      console.error("Payment process error:", err);
       setError(err.message || "Payment failed. Please try again.");
       toast.error(err.message || "Payment failed. Please try again.");
     } finally {

@@ -12,9 +12,6 @@ export function useSubscription() {
     queryKey: ["subscription"],
     queryFn: async () => {
       const response = await fetch("/api/subscription");
-      if (!response.ok) {
-        throw new Error("Failed to fetch subscription");
-      }
       return response.json();
     },
     enabled: !!user,

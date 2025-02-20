@@ -1,66 +1,52 @@
 import { auth } from "@clerk/nextjs";
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 export async function POST(req: Request) {
   try {
-    const { userId } = auth();
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
+    const { userId: clerkId } = await auth();
+    
     const body = await req.json();
-    const { priceId, couponCode } = body;
+    const { priceId } = body;
 
-    console.log("💰 Creating payment intent:", {
-      priceId,
-      couponCode,
+    // Get the user from database to get their ID
+    const user = await db.query.users.findFirst({
+      where: eq(users.clerkId, clerkId),
     });
 
-    // Get the price details
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 401 });
+    }
+
+    console.log("Creating payment intent for:", {
+      clerkId,
+      userId: user.id,
+      priceId
+    });
+
     const price = await stripe.prices.retrieve(priceId);
     let amount = price.unit_amount || 0;
-
-    // Apply coupon if provided
-    if (couponCode) {
-      const coupon = await stripe.coupons.retrieve(couponCode);
-      if (coupon.percent_off) {
-        amount = amount * (1 - coupon.percent_off / 100);
-      } else if (coupon.amount_off) {
-        amount = amount - coupon.amount_off;
-      }
-    }
 
     // Create payment intent
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount), // Round to nearest integer
       currency: "usd",
       metadata: {
-        userId,
+        userId: user.id,
         priceId,
-        couponCode,
       },
     });
 
-    console.log("✅ Payment intent created:", {
-      id: paymentIntent.id,
-      amount: paymentIntent.amount,
-    });
+    console.log("Created payment intent with metadata:", paymentIntent.metadata);
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
     });
-
-  } catch (error: any) {
-    console.error("💥 Payment intent error:", error);
-    return NextResponse.json(
-      { 
-        error: error.message || "Failed to create payment intent" 
-      }, 
-      { status: 500 }
-    );
+  } catch (error) {
+    console.error("Error creating payment intent:", error);
+    return NextResponse.json({ error: "Failed to create payment intent" }, { status: 500 });
   }
 } 
