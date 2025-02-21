@@ -58,15 +58,15 @@ async function updateSubscriptionInDB(subscription: Stripe.Subscription, userId:
 
 export async function POST(req: Request) {
   try {
-    const body = await req.text();
+  const body = await req.text();
     const signature = headers().get("Stripe-Signature");
 
     console.log('📥 Received webhook event');
 
-    if (!signature) {
+  if (!signature) {
       console.error('❌ No Stripe signature found');
       return NextResponse.json({ error: "No signature found" }, { status: 400 });
-    }
+  }
 
     const event = stripe.webhooks.constructEvent(
       body,
@@ -125,7 +125,7 @@ export async function POST(req: Request) {
               })
               .where(eq(subscriptions.userId, userId));
 
-            await db
+        await db
               .update(users)
               .set({
                 plan: 'free',

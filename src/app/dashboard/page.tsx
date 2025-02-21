@@ -44,6 +44,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Shimmer } from "@/components/ui/shimmer";
 
 const PROMPTS = [
   {
@@ -625,7 +626,7 @@ export default function DashboardPage() {
           {/* Main Content */}
           <main className="flex-1 rounded-[32px] bg-white p-4 sm:p-6 md:p-8">
             {activeTab === "personal-statement" && (
-              <div className="space-y-8">
+              <div className="space-y-4">
                 <div className="rounded-full bg-[#F3F4F6] px-6 py-2 text-sm font-medium text-black w-fit">
                   PERSONAL STATEMENT
                 </div>
@@ -727,70 +728,31 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                {isGeneratingEssay && (
-                  <div className="mt-8 rounded-[24px] border border-[#E5E7EB] bg-white p-8">
-                    <div className="flex flex-col items-center justify-center min-h-[300px]">
-                      <div className="flex flex-col items-center space-y-4">
-                        <Loader2 className="h-8 w-8 animate-spin text-[#7857FF]" />
-                        <div className="text-center space-y-2">
-                          <p className="text-lg font-medium text-gray-900">
-                            Generating Your Essay
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            This might take a minute. We're crafting a
-                            personalized essay based on your information...
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                {isGenerating ? (
+                  <div className="mt-6 rounded-lg border bg-white p-4">
+                    <Shimmer className="min-h-[300px]" />
                   </div>
-                )}
-
-                {!isGeneratingEssay && generatedEssay && (
-                  <div className="rounded-[24px] border border-[#E5E7EB] bg-white p-6">
-                    <div className="mb-4 flex justify-end gap-2">
-                      <button
-                        onClick={handleCopy}
-                        className="rounded-full hover:bg-[#F3F4F6] p-2 transition-colors"
-                        title="Copy to clipboard"
-                      >
-                        <RiFileCopyLine className="h-5 w-5 text-[#6B7280]" />
-                      </button>
-                      <button
-                        onClick={handleClear}
-                        className="rounded-full hover:bg-[#F3F4F6] p-2 transition-colors"
-                        title="Clear all"
-                      >
-                        <svg
-                          width="20"
-                          height="20"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="text-[#6B7280]"
-                        >
-                          <path
-                            d="M4 6H20M16 6L15.7294 5.18807C15.4671 4.40125 15.3359 4.00784 15.0927 3.71698C14.8779 3.46013 14.6021 3.26132 14.2905 3.13878C13.9376 3 13.523 3 12.6936 3H11.3064C10.477 3 10.0624 3 9.70951 3.13878C9.39792 3.26132 9.12208 3.46013 8.90729 3.71698C8.66405 4.00784 8.53292 4.40125 8.27064 5.18807L8 6M18 6V16.2C18 17.8802 18 18.7202 17.673 19.362C17.3854 19.9265 16.9265 20.3854 16.362 20.673C15.7202 21 14.8802 21 13.2 21H10.8C9.11984 21 8.27976 21 7.63803 20.673C7.07354 20.3854 6.6146 19.9265 6.32698 19.362C6 18.7202 6 17.8802 6 16.2V6M14 10V17M10 10V17"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
-                      <button
+                ) : generatedEssay ? (
+                  <div className="mt-6 rounded-lg border bg-white p-4">
+                    <div className="prose max-w-none">
+                      <p className="whitespace-pre-wrap">{generatedEssay}</p>
+                    </div>
+                    <div className="mt-4 flex items-center gap-2">
+                      <Button
                         onClick={handleRegenerate}
-                        className="rounded-full hover:bg-[#F3F4F6] p-2 transition-colors"
+                        disabled={isGenerating}
                       >
-                        <CiRedo className="h-5 w-5 text-[#6B7280]" />
-                      </button>
-                    </div>
-                    <div className="min-h-[300px] whitespace-pre-wrap text-base leading-relaxed text-black">
-                      {generatedEssay ||
-                        "Your generated essay will appear here..."}
+                        Regenerate
+                      </Button>
+                      <Button onClick={handleCopy} variant="outline">
+                        Copy
+                      </Button>
+                      <Button onClick={handleClear} variant="outline">
+                        Clear
+                      </Button>
                     </div>
                   </div>
-                )}
+                ) : null}
               </div>
             )}
 
@@ -1013,11 +975,60 @@ export default function DashboardPage() {
                       disabled={isGenerating}
                       className="rounded-full bg-[#7C3AED] px-8 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 whitespace-nowrap"
                     >
-                      {isGenerating ? "Generating..." : "GENERATE"}
+                      {isGenerating ? (
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Generating...
+                        </div>
+                      ) : (
+                        "GENERATE"
+                      )}
                     </button>
                   </div>
 
-                  {activities.activity.length > 0 && (
+                  {isGenerating ? (
+                    // Shimmer loading state for all three sections
+                    <div className="space-y-6">
+                      {/* Activity Section Shimmer */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xl font-medium text-black">
+                            ACTIVITY
+                          </h3>
+                          <div className="text-2xl text-[#6B7280]">1</div>
+                        </div>
+                        <div className="rounded-[24px] border border-[#E5E7EB] bg-white p-6">
+                          <Shimmer className="min-h-[200px]" />
+                        </div>
+                      </div>
+
+                      {/* Creativity Section Shimmer */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xl font-medium text-black">
+                            CREATIVITY
+                          </h3>
+                          <div className="text-2xl text-[#6B7280]">2</div>
+                        </div>
+                        <div className="rounded-[24px] border border-[#E5E7EB] bg-white p-6">
+                          <Shimmer className="min-h-[200px]" />
+                        </div>
+                      </div>
+
+                      {/* Service Section Shimmer */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xl font-medium text-black">
+                            SERVICE
+                          </h3>
+                          <div className="text-2xl text-[#6B7280]">3</div>
+                        </div>
+                        <div className="rounded-[24px] border border-[#E5E7EB] bg-white p-6">
+                          <Shimmer className="min-h-[200px]" />
+                        </div>
+                      </div>
+                    </div>
+                  ) : activities.activity.length > 0 ? (
                     <div className="space-y-6">
                       {/* Activity Section - Visible to all */}
                       <div className="space-y-4">
@@ -1161,7 +1172,7 @@ export default function DashboardPage() {
                         )}
                       </div>
                     </div>
-                  )}
+                  ) : null}
                 </div>
               </div>
             )}

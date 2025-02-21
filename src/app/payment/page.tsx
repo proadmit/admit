@@ -55,7 +55,7 @@ function CheckoutForm({
       // Log the user info first
       console.log("Starting payment process for user:", {
         clerkId: user.id,
-        email: user.emailAddresses[0]?.emailAddress
+        email: user.emailAddresses[0]?.emailAddress,
       });
 
       const { error: submitError } = await elements.submit();
@@ -85,18 +85,19 @@ function CheckoutForm({
 
       // Confirm payment with logging
       console.log("Confirming payment...");
-      const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        clientSecret: data.clientSecret,
-        confirmParams: {
-          payment_method_data: {
-            billing_details: {
-              email: user.emailAddresses[0]?.emailAddress,
+      const { error: confirmError, paymentIntent } =
+        await stripe.confirmPayment({
+          elements,
+          clientSecret: data.clientSecret,
+          confirmParams: {
+            payment_method_data: {
+              billing_details: {
+                email: user.emailAddresses[0]?.emailAddress,
+              },
             },
           },
-        },
-        redirect: "if_required",
-      });
+          redirect: "if_required",
+        });
 
       if (confirmError) {
         throw confirmError;
@@ -114,7 +115,7 @@ function CheckoutForm({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             priceId,
-            paymentIntentId: paymentIntent.id // Add payment intent ID for tracking
+            paymentIntentId: paymentIntent.id, // Add payment intent ID for tracking
           }),
         });
 
@@ -136,13 +137,12 @@ function CheckoutForm({
         }
 
         toast.success(`Successfully upgraded to ${updateData.plan} plan!`);
-          router.push("/dashboard?success=true");
+        router.push("/dashboard?success=true");
       }
-
     } catch (err: any) {
       console.error("Payment process error:", err);
       setError(err.message || "Payment failed. Please try again.");
-        toast.error(err.message || "Payment failed. Please try again.");
+      toast.error(err.message || "Payment failed. Please try again.");
     } finally {
       setIsProcessing(false);
     }
@@ -151,10 +151,13 @@ function CheckoutForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <PaymentElement />
-      
+
       {/* Add coupon input */}
       <div className="mt-4">
-        <label htmlFor="coupon" className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="coupon"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Have a coupon? (Optional)
         </label>
         <div className="flex gap-2">
@@ -203,54 +206,54 @@ function CheckoutForm({
 }
 
 const PLANS = [
-    {
-      name: "Free Plan",
-      price: "$0",
-      period: "USD/month",
+  {
+    name: "Free Plan",
+    price: "$0",
+    period: "USD/month",
     priceId: "free",
     buttonText: "Your current plan",
     buttonClass: "bg-gray-200 text-gray-600 cursor-not-allowed",
-      features: [
-        "AI platform access",
-        "Limited Personal Statement",
-        "Limited Extracurricular Activities",
-        "General Application",
-      ],
-    },
-    {
-      name: "Premium Plan",
-      price: "$10",
-      period: "USD/month",
+    features: [
+      "AI platform access",
+      "Limited Personal Statement",
+      "Limited Extracurricular Activities",
+      "General Application",
+    ],
+  },
+  {
+    name: "Premium Plan",
+    price: "$10",
+    period: "USD/month",
     priceId: PRICE_IDS.monthly,
     buttonText: "Upgrade to Premium",
     buttonClass: "bg-[#47B5FF] text-white hover:bg-[#47B5FF]/90",
-      features: [
-        "AI platform access",
-        "Unlimited Personal Statements",
-        "Unlimited Supplemental Essays",
-        "Extracurricular Activities with AI",
-        "Advanced & Unique Application",
-        "Recommendation Letters with AI",
-        "Cancel anytime.",
-      ],
-    },
-    {
-      name: "Premium Plan for a year",
-      price: "$80",
-      period: "USD/year",
+    features: [
+      "AI platform access",
+      "Unlimited Personal Statements",
+      "Unlimited Supplemental Essays",
+      "Extracurricular Activities with AI",
+      "Advanced & Unique Application",
+      "Recommendation Letters with AI",
+      "Cancel anytime.",
+    ],
+  },
+  {
+    name: "Premium Plan for a year",
+    price: "$80",
+    period: "USD/year",
     priceId: PRICE_IDS.yearly,
     buttonText: "Upgrade to Year Premium",
     buttonClass: "bg-[#47B5FF] text-white hover:bg-[#47B5FF]/90",
-      features: [
-        "A 33% Discount in yearly plan",
-        "AI platform access",
-        "Unlimited Personal Statements",
-        "Unlimited Supplemental Essays",
-        "Extracurricular Activities with AI",
-        "Advanced & Unique Application",
-        "Recommendation Letters with AI",
-        "Cancel anytime.",
-      ],
+    features: [
+      "A 33% Discount in yearly plan",
+      "AI platform access",
+      "Unlimited Personal Statements",
+      "Unlimited Supplemental Essays",
+      "Extracurricular Activities with AI",
+      "Advanced & Unique Application",
+      "Recommendation Letters with AI",
+      "Cancel anytime.",
+    ],
   },
 ];
 
@@ -267,7 +270,7 @@ export default function PaymentPage() {
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
   const [validCoupon, setValidCoupon] = useState<{
     discount: number;
-    discountType: 'percent' | 'fixed';
+    discountType: "percent" | "fixed";
   } | null>(null);
 
   useEffect(() => {
@@ -382,9 +385,13 @@ export default function PaymentPage() {
         });
         toast({
           title: "Success!",
-          description: data.message || `Coupon applied: ${data.discountType === 'percent' ? 
-            `${data.discount}% off` : 
-            `$${data.discount/100} off`}`,
+          description:
+            data.message ||
+            `Coupon applied: ${
+              data.discountType === "percent"
+                ? `${data.discount}% off`
+                : `$${data.discount / 100} off`
+            }`,
         });
       } else {
         setValidCoupon(null);
@@ -413,8 +420,8 @@ export default function PaymentPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold text-center mb-12">
-            Upgrade your plan
-          </h1>
+        Upgrade your plan
+      </h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {PLANS.map((plan) => (
@@ -484,9 +491,9 @@ export default function PaymentPage() {
                 )}
               </button>
             )}
-            </div>
-          ))}
-        </div>
+          </div>
+        ))}
+      </div>
 
       {clientSecret && selectedPlanId && (
         <div className="mt-8 max-w-2xl mx-auto p-6 border rounded-[20px] bg-white shadow-sm">
