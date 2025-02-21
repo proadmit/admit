@@ -112,7 +112,7 @@ function CheckoutForm({
         const updateResponse = await fetch("/api/update-plan", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             priceId,
             paymentIntentId: paymentIntent.id // Add payment intent ID for tracking
           }),
@@ -136,13 +136,13 @@ function CheckoutForm({
         }
 
         toast.success(`Successfully upgraded to ${updateData.plan} plan!`);
-        router.push("/dashboard?success=true");
+          router.push("/dashboard?success=true");
       }
 
     } catch (err: any) {
       console.error("Payment process error:", err);
       setError(err.message || "Payment failed. Please try again.");
-      toast.error(err.message || "Payment failed. Please try again.");
+        toast.error(err.message || "Payment failed. Please try again.");
     } finally {
       setIsProcessing(false);
     }

@@ -31,20 +31,20 @@ export async function POST(req: Request) {
     let amount = price.unit_amount || 0;
 
     // Create payment intent
-    const paymentIntent = await stripe.paymentIntents.create({
+      const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount), // Round to nearest integer
-      currency: "usd",
-      metadata: {
-        userId: user.id,
+        currency: "usd",
+        metadata: {
+          userId: user.id,
         priceId,
-      },
-    });
+        },
+      });
 
     console.log("Created payment intent with metadata:", paymentIntent.metadata);
 
-    return NextResponse.json({
-      clientSecret: paymentIntent.client_secret,
-    });
+      return NextResponse.json({
+        clientSecret: paymentIntent.client_secret,
+      });
   } catch (error) {
     console.error("Error creating payment intent:", error);
     return NextResponse.json({ error: "Failed to create payment intent" }, { status: 500 });

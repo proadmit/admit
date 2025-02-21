@@ -1,7 +1,10 @@
 "use server";
 
-import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs";
+import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -10,10 +13,27 @@ const openai = new OpenAI({
 
 export async function POST(req: Request) {
   try {
-    const { userId } = auth();
+    const { userId: clerkId } = auth();
     
-    if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 });
+    if (!clerkId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get user and their current plan
+    const user = await db.query.users.findFirst({
+      where: eq(users.clerkId, clerkId),
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Check if user is on free plan and has used their free generation
+    if (user.plan === "free" && user.freePersonalStatementGenerations >= 1) {
+      return NextResponse.json({
+        error: "Free generation limit reached",
+        requiresUpgrade: true
+      }, { status: 403 });
     }
 
     const {
@@ -64,9 +84,19 @@ export async function POST(req: Request) {
 
     const essay = response.choices[0].message.content;
 
+    // If user is on free plan, increment their generation count
+    if (user.plan === "free") {
+      await db.update(users)
+        .set({
+          freePersonalStatementGenerations: user.freePersonalStatementGenerations + 1,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, user.id));
+    }
+
     return NextResponse.json({ essay });
   } catch (error) {
     console.error("[PERSONAL_STATEMENT_ERROR]", error);
-    return new NextResponse("Internal Error", { status: 500 });
+    return NextResponse.json({ error: "Failed to generate content" }, { status: 500 });
   }
 } 

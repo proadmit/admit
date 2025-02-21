@@ -149,6 +149,7 @@ export default function DashboardPage() {
   const [isGeneratingCollegeList, setIsGeneratingCollegeList] = useState(false);
   const [isGeneratingRecommendation, setIsGeneratingRecommendation] =
     useState(false);
+  const [extracurricularAttempts, setExtracurricularAttempts] = useState(0);
 
   // Handle mounting
   useEffect(() => {
@@ -199,6 +200,12 @@ export default function DashboardPage() {
     try {
       // Check if this is a second attempt for free users
       if (plan === "free" && generationAttempts > 0) {
+        toast({
+          title: "Upgrade Required",
+          description:
+            "You've reached your free generation limit. Upgrade to Premium for unlimited generations!",
+          variant: "destructive",
+        });
         router.push("/payment");
         return;
       }
@@ -246,18 +253,36 @@ export default function DashboardPage() {
         }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error("Failed to generate personal statement");
+        if (response.status === 403 && data.requiresUpgrade) {
+          toast({
+            title: "Upgrade Required",
+            description:
+              "You've reached your free generation limit. Upgrade to Premium for unlimited generations!",
+            variant: "destructive",
+          });
+          router.push("/payment");
+          return;
+        }
+        throw new Error(data.error || "Failed to generate personal statement");
       }
 
-      const data = await response.json();
       setGeneratedEssay(data.essay);
       setGenerationAttempts((prev) => prev + 1);
-    } catch (error) {
+
+      toast({
+        title: "Success",
+        description: "Personal statement generated successfully!",
+      });
+    } catch (error: any) {
       console.error("Error generating personal statement:", error);
       toast({
         title: "Error",
-        description: "Failed to generate personal statement. Please try again.",
+        description:
+          error.message ||
+          "Failed to generate personal statement. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -266,16 +291,24 @@ export default function DashboardPage() {
   };
 
   const handleRegenerate = () => {
-    if (plan === "free") {
+    if (plan === "free" && generationAttempts > 0) {
+      toast({
+        title: "Upgrade Required",
+        description: "Upgrade to premium to regenerate!",
+        variant: "destructive",
+      });
       router.push("/payment");
-    } else {
-      handleGenerate();
+      return;
     }
+    handleGenerate();
   };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(generatedEssay);
-    // TODO: Add toast notification
+    toast({
+      title: "Success",
+      description: "Copied to clipboard!",
+    });
   };
 
   const handleClear = () => {
@@ -294,6 +327,18 @@ export default function DashboardPage() {
 
   const handleGenerateActivities = async () => {
     try {
+      // Check if free user has reached their limit
+      if (plan === "free" && extracurricularAttempts > 0) {
+        toast({
+          title: "Upgrade Required",
+          description:
+            "You've reached your free generation limit. Upgrade to Premium for unlimited generations!",
+          variant: "destructive",
+        });
+        router.push("/payment");
+        return;
+      }
+
       setIsGenerating(true);
       const response = await fetch("/api/generate-activities", {
         method: "POST",
@@ -307,18 +352,53 @@ export default function DashboardPage() {
         }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error("Failed to generate activities");
+        if (response.status === 403 && data.requiresUpgrade) {
+          toast({
+            title: "Upgrade Required",
+            description:
+              "You've reached your free generation limit. Upgrade to Premium for unlimited generations!",
+            variant: "destructive",
+          });
+          router.push("/payment");
+          return;
+        }
+        throw new Error(data.error || "Failed to generate activities");
       }
 
-      const data = await response.json();
       setActivities(data.activities);
+      setExtracurricularAttempts((prev) => prev + 1);
+
+      toast({
+        title: "Success",
+        description: "Activities generated successfully!",
+      });
     } catch (error) {
       console.error("Error generating activities:", error);
-      window.alert("Failed to generate activities. Please try again.");
+      toast({
+        title: "Error",
+        description: "Failed to generate activities. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  // Add a regenerate function for extracurricular activities
+  const handleRegenerateActivities = () => {
+    if (plan === "free" && extracurricularAttempts > 0) {
+      toast({
+        title: "Upgrade Required",
+        description: "Upgrade to premium to regenerate!",
+        variant: "destructive",
+      });
+      router.push("/payment");
+      return;
+    }
+    handleGenerateActivities();
   };
 
   const handleGenerateSupplementalEssay = async () => {
@@ -958,7 +1038,7 @@ export default function DashboardPage() {
                                   <RiFileCopyLine className="h-5 w-5 text-[#6B7280]" />
                                 </button>
                                 <button
-                                  onClick={handleGenerateActivities}
+                                  onClick={handleRegenerateActivities}
                                   className="rounded-full hover:bg-[#F3F4F6] p-2 transition-colors"
                                 >
                                   <CiRedo className="h-5 w-5 text-[#6B7280]" />
@@ -996,7 +1076,7 @@ export default function DashboardPage() {
                                   <RiFileCopyLine className="h-5 w-5 text-[#6B7280]" />
                                 </button>
                                 <button
-                                  onClick={handleGenerateActivities}
+                                  onClick={handleRegenerateActivities}
                                   className="rounded-full hover:bg-[#F3F4F6] p-2 transition-colors"
                                 >
                                   <CiRedo className="h-5 w-5 text-[#6B7280]" />
@@ -1051,7 +1131,7 @@ export default function DashboardPage() {
                                   <RiFileCopyLine className="h-5 w-5 text-[#6B7280]" />
                                 </button>
                                 <button
-                                  onClick={handleGenerateActivities}
+                                  onClick={handleRegenerateActivities}
                                   className="rounded-full hover:bg-[#F3F4F6] p-2 transition-colors"
                                 >
                                   <CiRedo className="h-5 w-5 text-[#6B7280]" />

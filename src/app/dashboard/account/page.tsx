@@ -56,7 +56,7 @@ export default function AccountPage() {
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!user) {
       toast({
         title: "Error",
@@ -92,10 +92,10 @@ export default function AccountPage() {
           name: firstName,
           surname: lastName,
           hasCompletedPersonalInfo: true,
-        }
+        },
       };
 
-      console.log('Updating with data:', updateData);
+      console.log("Updating with data:", updateData);
 
       // Attempt update with retry logic
       let retryCount = 0;
@@ -104,24 +104,27 @@ export default function AccountPage() {
       while (retryCount < maxRetries) {
         try {
           await user.update(updateData);
-          console.log('Update successful');
-          
+          console.log("Update successful");
+
           toast({
             title: "Success",
             description: "Profile updated successfully",
           });
-          
+
           router.refresh();
           break;
         } catch (updateError: any) {
-          console.error(`Update attempt ${retryCount + 1} failed:`, updateError);
-          
+          console.error(
+            `Update attempt ${retryCount + 1} failed:`,
+            updateError
+          );
+
           if (retryCount === maxRetries - 1) {
             throw updateError; // Throw on last retry
           }
-          
+
           retryCount++;
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1s before retry
         }
       }
     } catch (error: any) {
@@ -129,12 +132,13 @@ export default function AccountPage() {
         error,
         message: error.message,
         status: error.status,
-        data: error.data
+        data: error.data,
       });
-      
+
       toast({
         title: "Error",
-        description: "Failed to update profile. Please check your internet connection and try again.",
+        description:
+          "Failed to update profile. Please check your internet connection and try again.",
         variant: "destructive",
       });
     } finally {
@@ -178,7 +182,7 @@ export default function AccountPage() {
 
     try {
       // Check file type
-      if (!file.type.startsWith('image/')) {
+      if (!file.type.startsWith("image/")) {
         toast({
           title: "Error",
           description: "Please select an image file",
@@ -198,12 +202,12 @@ export default function AccountPage() {
       }
 
       await user.setProfileImage({ file });
-      
+
       toast({
         title: "Success",
         description: "Profile picture updated successfully",
       });
-      
+
       router.refresh();
     } catch (error) {
       console.error("Error updating profile image:", error);
@@ -227,9 +231,11 @@ export default function AccountPage() {
       }
 
       await clerk.signOut();
-      
-      router.push(`/auth/sign-in?reset_password=${user.emailAddresses[0].emailAddress}`);
-      
+
+      router.push(
+        `/auth/sign-in?reset_password=${user.emailAddresses[0].emailAddress}`
+      );
+
       toast({
         title: "Success",
         description: "You will be redirected to reset your password",
@@ -344,7 +350,7 @@ export default function AccountPage() {
               >
                 {isUpdating ? (
                   <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Updating...
                   </>
                 ) : (

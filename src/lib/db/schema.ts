@@ -19,6 +19,8 @@ export const users = pgTable("users", {
   major: text("major").notNull(),
   achievements: text("achievements"),
   plan: text("plan").notNull().default("free"),
+  freeExtracurricularGenerations: integer("free_extracurricular_generations").notNull().default(0),
+  freePersonalStatementGenerations: integer("free_personal_statement_generations").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
