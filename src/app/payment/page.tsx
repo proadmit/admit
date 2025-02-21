@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useUser } from "@clerk/nextjs";
+import { cn } from "@/lib/utils";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
@@ -208,7 +209,8 @@ function CheckoutForm({
 const PLANS = [
   {
     name: "Free Plan",
-    price: "$0",
+    price: 0,
+    displayPrice: "$0",
     period: "USD/month",
     priceId: "free",
     buttonText: "Your current plan",
@@ -222,7 +224,8 @@ const PLANS = [
   },
   {
     name: "Premium Plan",
-    price: "$10",
+    price: 10,
+    displayPrice: "$10",
     period: "USD/month",
     priceId: PRICE_IDS.monthly,
     buttonText: "Upgrade to Premium",
@@ -239,7 +242,8 @@ const PLANS = [
   },
   {
     name: "Premium Plan for a year",
-    price: "$80",
+    price: 80,
+    displayPrice: "$80",
     period: "USD/year",
     priceId: PRICE_IDS.yearly,
     buttonText: "Upgrade to Year Premium",
@@ -257,6 +261,50 @@ const PLANS = [
   },
 ];
 
+// Add price breakdown component
+const PriceBreakdown = ({
+  basePrice,
+  discountPercentage = 0,
+  discountAmount = 0,
+}: {
+  basePrice: number;
+  discountPercentage?: number;
+  discountAmount?: number;
+}) => {
+  // Calculate discount on base price only
+  const discountValue =
+    discountPercentage > 0
+      ? (basePrice * discountPercentage) / 100
+      : discountAmount;
+
+  const finalTotal = basePrice - discountValue;
+
+  return (
+    <div className="space-y-3 border-t border-gray-200 pt-4">
+      <div className="flex justify-between text-sm">
+        <span className="text-gray-600">Base Price:</span>
+        <span className="font-medium">${basePrice.toFixed(2)}</span>
+      </div>
+      {discountValue > 0 && (
+        <div className="flex justify-between text-sm">
+          <span className="text-green-600">
+            Discount {discountPercentage > 0 ? `(${discountPercentage}%)` : ""}:
+          </span>
+          <span className="font-medium text-green-600">
+            -${discountValue.toFixed(2)}
+          </span>
+        </div>
+      )}
+      <div className="flex justify-between border-t border-gray-200 pt-3 text-base">
+        <span className="font-semibold">Total:</span>
+        <span className="font-bold text-[#47B5FF]">
+          ${finalTotal.toFixed(2)}
+        </span>
+      </div>
+    </div>
+  );
+};
+
 export default function PaymentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -268,9 +316,13 @@ export default function PaymentPage() {
   const [error, setError] = useState<string | null>(null);
   const [couponCode, setCouponCode] = useState("");
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<(typeof PLANS)[0] | null>(
+    null
+  );
   const [validCoupon, setValidCoupon] = useState<{
     discount: number;
     discountType: "percent" | "fixed";
+    code: string;
   } | null>(null);
 
   useEffect(() => {
@@ -365,15 +417,25 @@ export default function PaymentPage() {
     }
   };
 
+  // Function to handle plan selection
+  const handlePlanSelect = (plan: (typeof PLANS)[0]) => {
+    setSelectedPlan(plan);
+    setSelectedPlanId(plan.priceId);
+  };
+
+  // Modify validateCoupon function
   const validateCoupon = async () => {
-    if (!couponCode.trim()) return;
+    if (!couponCode.trim() || !selectedPlan) return;
 
     setIsValidatingCoupon(true);
     try {
       const response = await fetch("/api/stripe/validate-coupon", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: couponCode }),
+        body: JSON.stringify({
+          code: couponCode,
+          planPrice: selectedPlan.price,
+        }),
       });
 
       const data = await response.json();
@@ -382,32 +444,22 @@ export default function PaymentPage() {
         setValidCoupon({
           discount: data.discount,
           discountType: data.discountType,
+          code: couponCode,
         });
-        toast({
-          title: "Success!",
-          description:
-            data.message ||
-            `Coupon applied: ${
-              data.discountType === "percent"
-                ? `${data.discount}% off`
-                : `$${data.discount / 100} off`
-            }`,
-        });
+        toast.success(
+          `Coupon applied: ${
+            data.discountType === "percent"
+              ? `${data.discount}% off`
+              : `$${data.discount / 100} off`
+          }`
+        );
       } else {
         setValidCoupon(null);
-        toast({
-          title: "Error",
-          description: data.message || "Invalid coupon code",
-          variant: "destructive",
-        });
+        toast.error(data.message || "Invalid coupon code");
       }
     } catch (error) {
       console.error("Error validating coupon:", error);
-      toast({
-        title: "Error",
-        description: "Failed to validate coupon. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Failed to validate coupon. Please try again.");
     } finally {
       setIsValidatingCoupon(false);
     }
@@ -427,12 +479,16 @@ export default function PaymentPage() {
         {PLANS.map((plan) => (
           <div
             key={plan.priceId}
-            className="rounded-[20px] border p-6 flex flex-col justify-between bg-white shadow-sm"
+            className={cn(
+              "rounded-[20px] border p-6 flex flex-col justify-between bg-white shadow-sm",
+              selectedPlan?.priceId === plan.priceId &&
+                "border-[#47B5FF] ring-1 ring-[#47B5FF]"
+            )}
           >
             <div>
               <h2 className="text-xl font-semibold mb-2">{plan.name}</h2>
               <div className="flex items-baseline mb-6">
-                <span className="text-3xl font-bold">{plan.price}</span>
+                <span className="text-3xl font-bold">{plan.displayPrice}</span>
                 <span className="text-gray-500 ml-1">{plan.period}</span>
               </div>
 
@@ -467,15 +523,16 @@ export default function PaymentPage() {
               </button>
             ) : (
               <button
-                onClick={() => handleUpgrade(plan.priceId)}
+                onClick={() => handlePlanSelect(plan)}
                 disabled={
                   isLoading === plan.priceId || plan.priceId === currentPlan
                 }
-                className={`mt-6 w-full py-3 px-4 rounded-full font-medium ${
+                className={cn(
+                  "mt-6 w-full py-3 px-4 rounded-full font-medium",
                   plan.priceId === currentPlan
                     ? "bg-gray-100 text-gray-500 cursor-not-allowed"
                     : "bg-[#47B5FF] text-white hover:bg-[#47B5FF]/90 transition-colors"
-                }`}
+                )}
               >
                 {isLoading === plan.priceId ? (
                   <div className="flex items-center justify-center">
@@ -484,16 +541,93 @@ export default function PaymentPage() {
                   </div>
                 ) : plan.priceId === currentPlan ? (
                   "Current Plan"
-                ) : plan.period === "USD/month" ? (
-                  "Upgrade to Premium"
                 ) : (
-                  "Upgrade to Year Premium"
+                  plan.buttonText
                 )}
               </button>
             )}
           </div>
         ))}
       </div>
+
+      {selectedPlan && selectedPlan.priceId !== "free" && (
+        <div className="mt-8 max-w-2xl mx-auto">
+          <div className="rounded-[20px] border bg-white p-6 shadow-sm">
+            <h3 className="text-xl font-semibold mb-6">Order Summary</h3>
+
+            {/* Coupon Input */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Have a coupon code?
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value)}
+                  placeholder="Enter code"
+                  className="flex-1 rounded-full border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#47B5FF] focus:border-transparent"
+                />
+                <Button
+                  onClick={validateCoupon}
+                  disabled={isValidatingCoupon || !couponCode.trim()}
+                  className="rounded-full bg-[#47B5FF] text-white hover:bg-[#47B5FF]/90"
+                >
+                  {isValidatingCoupon ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    "Apply"
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Price Breakdown */}
+            <PriceBreakdown
+              basePrice={selectedPlan.price}
+              discountPercentage={
+                validCoupon?.discountType === "percent"
+                  ? validCoupon.discount
+                  : 0
+              }
+              discountAmount={
+                validCoupon?.discountType === "fixed"
+                  ? validCoupon.discount / 100
+                  : 0
+              }
+            />
+
+            <div className="mt-6 flex justify-end gap-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSelectedPlan(null);
+                  setSelectedPlanId(null);
+                  setValidCoupon(null);
+                  setCouponCode("");
+                }}
+                className="rounded-full"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => handleUpgrade(selectedPlan.priceId)}
+                disabled={isLoading === selectedPlan.priceId}
+                className="rounded-full bg-[#47B5FF] text-white hover:bg-[#47B5FF]/90"
+              >
+                {isLoading === selectedPlan.priceId ? (
+                  <div className="flex items-center justify-center">
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
+                  </div>
+                ) : (
+                  "Confirm Payment"
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {clientSecret && selectedPlanId && (
         <div className="mt-8 max-w-2xl mx-auto p-6 border rounded-[20px] bg-white shadow-sm">
