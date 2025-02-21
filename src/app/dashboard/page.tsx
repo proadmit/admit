@@ -152,6 +152,43 @@ export default function DashboardPage() {
     useState(false);
   const [extracurricularAttempts, setExtracurricularAttempts] = useState(0);
 
+  // Add function to prevent copying for free users
+  const preventCopy = (
+    e:
+      | React.ClipboardEvent<HTMLDivElement>
+      | React.MouseEvent<HTMLDivElement>
+      | React.KeyboardEvent<HTMLDivElement>
+  ) => {
+    if (plan === "free") {
+      e.preventDefault();
+      toast({
+        title: "Premium Feature",
+        description: "Upgrade to Premium to copy activities",
+        variant: "destructive",
+      });
+      router.push("/payment");
+    }
+  };
+
+  // Add function to handle copy button click
+  const handleCopyActivity = (text: string) => {
+    if (plan === "free") {
+      toast({
+        title: "Premium Feature",
+        description: "Upgrade to Premium to copy activities",
+        variant: "destructive",
+      });
+      router.push("/payment");
+      return;
+    }
+
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Success",
+      description: "Copied to clipboard",
+    });
+  };
+
   // Handle mounting
   useEffect(() => {
     setMounted(true);
@@ -1042,10 +1079,20 @@ export default function DashboardPage() {
                           {activities.activity.map((activity, index) => (
                             <div
                               key={index}
-                              className="mb-4 rounded-[24px] border border-[#E5E7EB] bg-white p-6"
+                              className={cn(
+                                "mb-4 rounded-[24px] border border-[#E5E7EB] bg-white p-6",
+                                plan === "free" && "select-none"
+                              )}
+                              onCopy={preventCopy}
+                              onCut={preventCopy}
+                              onMouseDown={preventCopy}
+                              onKeyDown={preventCopy}
                             >
                               <div className="mb-4 flex justify-end gap-2">
-                                <button className="rounded-full hover:bg-[#F3F4F6] p-2 transition-colors">
+                                <button
+                                  onClick={() => handleCopyActivity(activity)}
+                                  className="rounded-full hover:bg-[#F3F4F6] p-2 transition-colors"
+                                >
                                   <RiFileCopyLine className="h-5 w-5 text-[#6B7280]" />
                                 </button>
                                 <button
@@ -1055,7 +1102,12 @@ export default function DashboardPage() {
                                   <CiRedo className="h-5 w-5 text-[#6B7280]" />
                                 </button>
                               </div>
-                              <div className="whitespace-pre-wrap text-base leading-relaxed text-black">
+                              <div
+                                className={cn(
+                                  "whitespace-pre-wrap text-base leading-relaxed text-black",
+                                  plan === "free" && "select-none"
+                                )}
+                              >
                                 {activity}
                               </div>
                             </div>
