@@ -10,7 +10,7 @@ import { Plus } from "lucide-react";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Recommendation Letters - NazranAdmit",
+  title: "Recommendation Letters - Admituz",
   description: "Manage your letters of recommendation",
 };
 

@@ -10,7 +10,7 @@ import { Plus } from "lucide-react";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Extracurricular Activities - NazranAdmit",
+  title: "Extracurricular Activities - Admituz",
   description: "Manage your extracurricular activities",
 };
 

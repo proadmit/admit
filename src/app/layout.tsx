@@ -7,7 +7,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "NazranAdmit - College Admission Platform",
+  title: "Admituz - College Admission Platform",
   description: "Your AI-powered college admission companion",
 };
 

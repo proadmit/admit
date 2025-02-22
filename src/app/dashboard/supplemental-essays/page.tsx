@@ -10,7 +10,7 @@ import { Plus } from "lucide-react";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Supplemental Essays - NazranAdmit",
+  title: "Supplemental Essays - Admituz",
   description: "Manage your college-specific supplemental essays",
 };
 

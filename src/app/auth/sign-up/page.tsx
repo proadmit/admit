@@ -2,8 +2,8 @@ import { SignUp } from "@clerk/nextjs";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Sign Up - NazranAdmit",
-  description: "Create your NazranAdmit account",
+  title: "Sign Up - Admituz",
+  description: "Create your Admituz account",
 };
 
 export default function SignUpPage() {
