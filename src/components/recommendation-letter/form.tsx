@@ -259,7 +259,7 @@ export function RecommendationForm({ isPremium }: RecommendationFormProps) {
           </div>
 
           {letters.length > 0 && (
-            <div className="mt-6">
+            <div className="mt-6 space-y-6">
               <div className="overflow-x-auto border rounded-lg">
                 <Table>
                   <TableHeader>
@@ -267,8 +267,6 @@ export function RecommendationForm({ isPremium }: RecommendationFormProps) {
                       <TableHead>Recommender</TableHead>
                       <TableHead>Position</TableHead>
                       <TableHead>Duration</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Content</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -277,17 +275,21 @@ export function RecommendationForm({ isPremium }: RecommendationFormProps) {
                         <TableCell>{letter.recommenderName}</TableCell>
                         <TableCell>{letter.position}</TableCell>
                         <TableCell>{letter.duration} years</TableCell>
-                        <TableCell>
-                          <span className="capitalize">{letter.status}</span>
-                        </TableCell>
-                        <TableCell className="max-w-md">
-                          <div className="truncate">{letter.content}</div>
-                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </div>
+
+              {letters.map((letter, index) => (
+                <div key={index} className="bg-gray-50 rounded-lg p-6">
+                  <div className="prose prose-lg max-w-none">
+                    <div className="whitespace-pre-wrap text-base leading-relaxed text-gray-900">
+                      {letter.content}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
