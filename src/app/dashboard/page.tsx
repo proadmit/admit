@@ -1104,11 +1104,17 @@ export default function DashboardPage() {
                               </div>
                               <div
                                 className={cn(
-                                  "whitespace-pre-wrap text-base leading-relaxed text-black",
+                                  "prose prose-lg max-w-none whitespace-pre-wrap text-base leading-relaxed text-black",
                                   plan === "free" && "select-none"
                                 )}
                               >
-                                {activity}
+                                {activity
+                                  .split("\n")
+                                  .map((paragraph, pIndex) => (
+                                    <p key={pIndex} className="mb-4 last:mb-0">
+                                      {paragraph}
+                                    </p>
+                                  ))}
                               </div>
                             </div>
                           ))}
@@ -1145,8 +1151,14 @@ export default function DashboardPage() {
                                   <CiRedo className="h-5 w-5 text-[#6B7280]" />
                                 </button>
                               </div>
-                              <div className="whitespace-pre-wrap text-base leading-relaxed text-black">
-                                {activity}
+                              <div className="prose prose-lg max-w-none whitespace-pre-wrap text-base leading-relaxed text-black">
+                                {activity
+                                  .split("\n")
+                                  .map((paragraph, pIndex) => (
+                                    <p key={pIndex} className="mb-4 last:mb-0">
+                                      {paragraph}
+                                    </p>
+                                  ))}
                               </div>
                             </div>
                           ))}
@@ -1200,8 +1212,14 @@ export default function DashboardPage() {
                                   <CiRedo className="h-5 w-5 text-[#6B7280]" />
                                 </button>
                               </div>
-                              <div className="whitespace-pre-wrap text-base leading-relaxed text-black">
-                                {activity}
+                              <div className="prose prose-lg max-w-none whitespace-pre-wrap text-base leading-relaxed text-black">
+                                {activity
+                                  .split("\n")
+                                  .map((paragraph, pIndex) => (
+                                    <p key={pIndex} className="mb-4 last:mb-0">
+                                      {paragraph}
+                                    </p>
+                                  ))}
                               </div>
                             </div>
                           ))}
