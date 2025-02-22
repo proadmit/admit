@@ -282,12 +282,12 @@ export default function AccountPage() {
                     accept="image/*"
                     onChange={handleFileSelect}
                   />
-                  <Button
-                    variant="outline"
+                <Button
+                  variant="outline"
                     onClick={() => fileInputRef.current?.click()}
-                  >
-                    Change Avatar
-                  </Button>
+                >
+                  Change Avatar
+                </Button>
                   {user?.imageUrl && (
                     <Button
                       variant="ghost"
@@ -350,7 +350,7 @@ export default function AccountPage() {
               >
                 {isUpdating ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Updating...
                   </>
                 ) : (

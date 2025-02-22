@@ -138,12 +138,12 @@ function CheckoutForm({
         }
 
         toast.success(`Successfully upgraded to ${updateData.plan} plan!`);
-        router.push("/dashboard?success=true");
+          router.push("/dashboard?success=true");
       }
     } catch (err: any) {
       console.error("Payment process error:", err);
       setError(err.message || "Payment failed. Please try again.");
-      toast.error(err.message || "Payment failed. Please try again.");
+        toast.error(err.message || "Payment failed. Please try again.");
     } finally {
       setIsProcessing(false);
     }
@@ -207,57 +207,57 @@ function CheckoutForm({
 }
 
 const PLANS = [
-  {
-    name: "Free Plan",
+    {
+      name: "Free Plan",
     price: 0,
     displayPrice: "$0",
-    period: "USD/month",
+      period: "USD/month",
     priceId: "free",
     buttonText: "Your current plan",
     buttonClass: "bg-gray-200 text-gray-600 cursor-not-allowed",
-    features: [
-      "AI platform access",
-      "Limited Personal Statement",
-      "Limited Extracurricular Activities",
-      "General Application",
-    ],
-  },
-  {
-    name: "Premium Plan",
+      features: [
+        "AI platform access",
+        "Limited Personal Statement",
+        "Limited Extracurricular Activities",
+        "General Application",
+      ],
+    },
+    {
+      name: "Premium Plan",
     price: 10,
     displayPrice: "$10",
-    period: "USD/month",
+      period: "USD/month",
     priceId: PRICE_IDS.monthly,
     buttonText: "Upgrade to Premium",
     buttonClass: "bg-[#47B5FF] text-white hover:bg-[#47B5FF]/90",
-    features: [
-      "AI platform access",
-      "Unlimited Personal Statements",
-      "Unlimited Supplemental Essays",
-      "Extracurricular Activities with AI",
-      "Advanced & Unique Application",
-      "Recommendation Letters with AI",
-      "Cancel anytime.",
-    ],
-  },
-  {
-    name: "Premium Plan for a year",
+      features: [
+        "AI platform access",
+        "Unlimited Personal Statements",
+        "Unlimited Supplemental Essays",
+        "Extracurricular Activities with AI",
+        "Advanced & Unique Application",
+        "Recommendation Letters with AI",
+        "Cancel anytime.",
+      ],
+    },
+    {
+      name: "Premium Plan for a year",
     price: 80,
     displayPrice: "$80",
-    period: "USD/year",
+      period: "USD/year",
     priceId: PRICE_IDS.yearly,
     buttonText: "Upgrade to Year Premium",
     buttonClass: "bg-[#47B5FF] text-white hover:bg-[#47B5FF]/90",
-    features: [
-      "A 33% Discount in yearly plan",
-      "AI platform access",
-      "Unlimited Personal Statements",
-      "Unlimited Supplemental Essays",
-      "Extracurricular Activities with AI",
-      "Advanced & Unique Application",
-      "Recommendation Letters with AI",
-      "Cancel anytime.",
-    ],
+      features: [
+        "A 33% Discount in yearly plan",
+        "AI platform access",
+        "Unlimited Personal Statements",
+        "Unlimited Supplemental Essays",
+        "Extracurricular Activities with AI",
+        "Advanced & Unique Application",
+        "Recommendation Letters with AI",
+        "Cancel anytime.",
+      ],
   },
 ];
 
@@ -472,8 +472,8 @@ export default function PaymentPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold text-center mb-12">
-        Upgrade your plan
-      </h1>
+            Upgrade your plan
+          </h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {PLANS.map((plan) => (
@@ -546,9 +546,9 @@ export default function PaymentPage() {
                 )}
               </button>
             )}
-          </div>
-        ))}
-      </div>
+            </div>
+          ))}
+        </div>
 
       {selectedPlan && selectedPlan.priceId !== "free" && (
         <div className="mt-8 max-w-2xl mx-auto">

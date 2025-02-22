@@ -8,6 +8,13 @@
       "when": 1737716702617,
       "tag": "0000_absent_lifeguard",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1740210300897,
+      "tag": "0001_giant_terrax",
+      "breakpoints": true
     }
   ]
 }
