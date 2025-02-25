@@ -1362,7 +1362,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="mt-4 text-center text-sm text-[#9CA3AF]">
-          © 2025 AdmitApp, All rights reserved.
+          ©2025 AdmitApp, All rights reserved.
         </div>
 
         {/* Upgrade Modal */}
