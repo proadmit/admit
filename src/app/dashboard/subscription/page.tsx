@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createStripeSession } from "@/lib/stripe";
 
 export const metadata: Metadata = {
-  title: "Subscription - Admituz",
+  title: "Subscription - AdmitApp",
   description: "Manage your subscription",
 };
 

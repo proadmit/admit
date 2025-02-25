@@ -630,7 +630,7 @@ export default function DashboardPage() {
             {getPlanButton()}
           </div>
           <a
-            href="mailto:hello@admit.uz"
+            href="mailto:hello@admitapp.org"
             className="rounded-full bg-[#E5E7EB] px-6 py-2 text-sm font-medium text-[#6B7280] hover:bg-[#D1D5DB] transition-colors inline-block text-center sm:text-left"
           >
             SUPPORT
@@ -1362,7 +1362,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="mt-4 text-center text-sm text-[#9CA3AF]">
-          © 2025 Admit.uz. All rights reserved
+          © 2025 AdmitApp, All rights reserved.
         </div>
 
         {/* Upgrade Modal */}
