@@ -8,6 +8,13 @@
       "when": 1740116677796,
       "tag": "0000_white_the_captain",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1741068511664,
+      "tag": "0001_stiff_havok",
+      "breakpoints": true
     }
   ]
 }
