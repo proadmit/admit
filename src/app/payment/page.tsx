@@ -180,7 +180,6 @@ function CheckoutForm({
           redirect: "if_required",
         });
 
-        
       if (confirmError) {
         throw confirmError;
       }

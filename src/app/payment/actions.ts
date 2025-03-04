@@ -12,24 +12,24 @@ const PRICE_IDS = {
 
 export async function getUserSubscription() {
   try {
-    const { userId: clerkId } = await auth();
-    if (!clerkId) return null;
+  const { userId: clerkId } = await auth();
+  if (!clerkId) return null;
 
     // Get user with their subscription
-    const user = await db.query.users.findFirst({
-      where: eq(users.clerkId, clerkId),
-      with: {
+  const user = await db.query.users.findFirst({
+    where: eq(users.clerkId, clerkId),
+    with: {
         subscription: true
       }
-    });
+  });
 
-    if (!user) return null;
+  if (!user) return null;
 
     // If user has no plan or it's free
     if (!user.plan || user.plan === "free") {
       return {
-        status: "active",
-        priceId: "free",
+    status: "active",
+    priceId: "free",
         currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
         plan: "free",
         planType: "Free Plan",

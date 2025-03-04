@@ -41,19 +41,6 @@ async function updateSubscriptionInDB(subscription: Stripe.Subscription, userId:
       throw new Error(`User not found: ${userId}`);
     }
 
-    // Update user's Stripe customer ID if not set
-    if (!existingUser.stripeCustomerId && subscription.customer) {
-      await db
-        .update(users)
-        .set({
-          stripeCustomerId: subscription.customer as string,
-          updatedAt: new Date(),
-        })
-        .where(eq(users.id, userId));
-      
-      console.log('✅ Updated user with Stripe customer ID:', subscription.customer);
-    }
-
     // Update subscription record
     console.log('📝 Updating subscription record...');
     await db
@@ -203,7 +190,7 @@ export async function POST(req: Request) {
               })
               .where(eq(subscriptions.userId, userId));
 
-            await db
+        await db
               .update(users)
               .set({
                 plan: 'free',
@@ -240,11 +227,12 @@ export async function POST(req: Request) {
       }
     }
 
+    console.log('✅ Successfully processed webhook event:', event.type);
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error('❌ Error processing webhook:', error);
+    console.error('❌ Webhook error:', error);
     return NextResponse.json(
-      { error: 'Webhook error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Webhook handler failed' },
       { status: 400 }
     );
   }

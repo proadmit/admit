@@ -6,11 +6,15 @@ import * as schema from './schema';
 const connectionString = process.env.DATABASE_URL!;
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Configure connection with SSL
-const client = postgres(connectionString, {
-  ssl: {
-    rejectUnauthorized: false // Required for AWS RDS
-  }
+// Create the connection with SSL in production
+const client = postgres(connectionString, { 
+  max: 1,
+  ssl: isProduction ? {
+    rejectUnauthorized: false // Allow self-signed certificates in production
+  } : false,
+  connect_timeout: 10, // Connection timeout in seconds
+  idle_timeout: 20, // How long a connection can remain idle before being closed
+  max_lifetime: 60 * 30 // Max connection lifetime in seconds (30 minutes)
 });
 
 export const db = drizzle(client, { schema });

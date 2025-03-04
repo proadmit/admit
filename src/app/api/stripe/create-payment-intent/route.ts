@@ -48,21 +48,21 @@ export async function POST(req: Request) {
     }
 
     // Create payment intent with coupon metadata
-    const paymentIntent = await stripe.paymentIntents.create({
+      const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.max(Math.round(amount), 0), // Ensure amount is not negative
-      currency: "usd",
-      metadata: {
-        userId: user.id,
+        currency: "usd",
+        metadata: {
+          userId: user.id,
         priceId,
         couponCode: couponCode || undefined,
-      },
-    });
+        },
+      });
 
     console.log("Created payment intent with metadata:", paymentIntent.metadata);
 
-    return NextResponse.json({
-      clientSecret: paymentIntent.client_secret,
-    });
+      return NextResponse.json({
+        clientSecret: paymentIntent.client_secret,
+      });
   } catch (error) {
     console.error("Error creating payment intent:", error);
     return NextResponse.json({ error: "Failed to create payment intent" }, { status: 500 });
