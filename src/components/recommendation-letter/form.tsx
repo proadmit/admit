@@ -160,7 +160,7 @@ export function RecommendationForm({ isPremium }: RecommendationFormProps) {
             <h3 className="text-sm font-medium text-gray-700 mb-2">
               Your Information:
             </h3>
-            <div className="grid grid-cols-3 gap-4 text-sm">
+            <div className="md:grid md:grid-cols-3 md:gap-4 gap-2 text-sm flex flex-col">
               <div>
                 <span className="text-gray-500">Name:</span>
                 <span className="ml-2 text-gray-900">{`${userInfo.name || ""} ${

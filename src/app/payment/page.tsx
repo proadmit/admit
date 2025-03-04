@@ -16,6 +16,16 @@ import { Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useUser } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { CheckCircle, XCircle } from "lucide-react";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
@@ -30,9 +40,11 @@ const PRICE_IDS = {
 function CheckoutForm({
   onClose,
   priceId,
+  plan,
 }: {
   onClose: () => void;
   priceId: string;
+  plan: (typeof PLANS)[0];
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -40,7 +52,78 @@ function CheckoutForm({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [couponCode, setCouponCode] = useState("");
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [validCoupon, setValidCoupon] = useState<{
+    id: string;
+    discount: number;
+    discountType: "percent" | "fixed";
+  } | null>(null);
+  const [validationTimeout, setValidationTimeout] =
+    useState<NodeJS.Timeout | null>(null);
   const router = useRouter();
+
+  // Debounced coupon validation
+  useEffect(() => {
+    if (validationTimeout) {
+      clearTimeout(validationTimeout);
+    }
+
+    if (couponCode.trim()) {
+      const timeout = setTimeout(() => {
+        setIsValidatingCoupon(true);
+        validateCoupon(couponCode);
+      }, 1000); // 1 seconds delay
+      setValidationTimeout(timeout);
+    } else {
+      setIsValidatingCoupon(false);
+      setValidCoupon(null);
+      setError(null);
+    }
+
+    return () => {
+      if (validationTimeout) {
+        clearTimeout(validationTimeout);
+      }
+    };
+  }, [couponCode]);
+
+  const validateCoupon = async (code: string) => {
+    try {
+      const response = await fetch("/api/stripe/validate-coupon", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ code }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Invalid coupon code");
+      }
+
+      if (data.valid) {
+        setValidCoupon({
+          id: data.couponId,
+          discount: data.discount,
+          discountType: data.discountType,
+        });
+        setError(null);
+        toast.success("Coupon applied successfully!");
+      } else {
+        setValidCoupon(null);
+        throw new Error("Invalid coupon code");
+      }
+    } catch (err: any) {
+      setValidCoupon(null);
+      setError(err.message);
+      toast.error(err.message);
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,43 +132,40 @@ function CheckoutForm({
       return;
     }
 
+    const { error: submitError } = await elements.submit();
+    if (submitError) {
+      setError(submitError.message);
+      return;
+    }
+
+    // Show confirmation dialog
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!stripe || !elements || !user) return;
+
     setIsProcessing(true);
     setError(null);
 
     try {
-      // Log the user info first
-      console.log("Starting payment process for user:", {
-        clerkId: user.id,
-        email: user.emailAddresses[0]?.emailAddress,
-      });
-
-      const { error: submitError } = await elements.submit();
-      if (submitError) {
-        throw submitError;
-      }
-
-      // Create payment intent with logging
-      console.log("Creating payment intent for:", { priceId });
+      // Create payment intent with coupon if valid
       const response = await fetch("/api/stripe/create-payment-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           priceId,
-          userId: user.id,
+          couponCode: validCoupon?.code,
         }),
       });
 
       const data = await response.json();
-      console.log("Payment intent response:", data);
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to create payment intent");
       }
 
-      toast.success("Processing payment...");
-
-      // Confirm payment with logging
-      console.log("Confirming payment...");
+      // Confirm payment
       const { error: confirmError, paymentIntent } =
         await stripe.confirmPayment({
           elements,
@@ -104,160 +184,215 @@ function CheckoutForm({
         throw confirmError;
       }
 
-      console.log("Payment confirmation result:", paymentIntent);
-
       if (paymentIntent.status === "succeeded") {
-        toast.success("Payment successful! Updating your plan...");
-
-        // Update plan with detailed logging
-        console.log("Sending plan update request...");
+        // Update plan
         const updateResponse = await fetch("/api/update-plan", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             priceId,
-            paymentIntentId: paymentIntent.id, // Add payment intent ID for tracking
+            paymentIntentId: paymentIntent.id,
           }),
         });
 
-        const updateData = await updateResponse.json();
-        console.log("Plan update response:", updateData);
-
         if (!updateResponse.ok) {
-          throw new Error(updateData.error || "Failed to update plan");
+          throw new Error("Failed to update plan");
         }
 
-        // Verify the update immediately
-        console.log("Verifying plan update...");
-        const verifyResponse = await fetch("/api/subscription");
-        const verifyData = await verifyResponse.json();
-        console.log("Current subscription status:", verifyData);
-
-        if (verifyData.plan === "free") {
-          throw new Error("Plan update verification failed");
-        }
-
-        toast.success(`Successfully upgraded to ${updateData.plan} plan!`);
-          router.push("/dashboard?success=true");
+        toast.success(`Successfully upgraded to ${plan.name}!`);
+        router.push("/dashboard?success=true");
       }
     } catch (err: any) {
-      console.error("Payment process error:", err);
-      setError(err.message || "Payment failed. Please try again.");
-        toast.error(err.message || "Payment failed. Please try again.");
+      console.error("Payment error:", err);
+      setError(err.message || "Payment failed");
+      toast.error(err.message || "Payment failed");
     } finally {
       setIsProcessing(false);
+      setShowConfirmation(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <PaymentElement />
+    <>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <PaymentElement />
 
-      {/* Add coupon input */}
-      <div className="mt-4">
-        <label
-          htmlFor="coupon"
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
-          Have a coupon? (Optional)
-        </label>
-        <div className="flex gap-2">
-          <input
-            id="coupon"
-            type="text"
-            value={couponCode}
-            onChange={(e) => setCouponCode(e.target.value)}
-            placeholder="Enter coupon code"
-            className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#47B5FF] focus:border-transparent"
-          />
-        </div>
-      </div>
-
-      {error && (
-        <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">
-          {error}
-        </div>
-      )}
-
-      <div className="flex gap-3">
-        <button
-          type="submit"
-          disabled={isProcessing || !stripe || !elements}
-          className="flex-1 bg-[#47B5FF] text-white rounded-full py-3 font-medium disabled:opacity-50 hover:bg-[#47B5FF]/90 transition-colors"
-        >
-          {isProcessing ? (
-            <div className="flex items-center justify-center">
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Processing...
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Coupon Code</Label>
+            <div className="relative">
+              <Input
+                type="text"
+                placeholder="Enter coupon code"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value)}
+                className={cn(
+                  "pr-10",
+                  validCoupon &&
+                    "border-green-500 focus-visible:ring-green-500",
+                  error && "border-red-500 focus-visible:ring-red-500"
+                )}
+                disabled={isValidatingCoupon}
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                {isValidatingCoupon && (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-900" />
+                )}
+                {validCoupon && !isValidatingCoupon && (
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                )}
+                {error && !isValidatingCoupon && (
+                  <XCircle className="h-5 w-5 text-red-500" />
+                )}
+              </div>
             </div>
-          ) : (
-            "Pay now"
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex-1 bg-gray-100 text-gray-600 rounded-full py-3 font-medium hover:bg-gray-200 transition-colors"
-        >
-          Cancel
-        </button>
-      </div>
-    </form>
+            {validCoupon && (
+              <p className="text-sm text-green-600">
+                {validCoupon.discountType === "percent"
+                  ? `${validCoupon.discount}% discount applied`
+                  : `$${validCoupon.discount / 100} discount applied`}
+              </p>
+            )}
+            {error && <p className="text-sm text-red-500">{error}</p>}
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <Button
+            type="submit"
+            disabled={
+              isProcessing || !stripe || !elements || isValidatingCoupon
+            }
+            className="flex-1 bg-[#47B5FF] text-white"
+          >
+            {isProcessing ? (
+              <div className="flex items-center justify-center">
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Processing...
+              </div>
+            ) : isValidatingCoupon ? (
+              "Validating coupon..."
+            ) : (
+              "Continue to payment"
+            )}
+          </Button>
+          <Button
+            type="button"
+            onClick={onClose}
+            variant="outline"
+            className="flex-1"
+          >
+            Cancel
+          </Button>
+        </div>
+      </form>
+
+      <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Payment</DialogTitle>
+            <DialogDescription>
+              Please review your payment details
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <PriceBreakdown
+              basePrice={plan.price}
+              discountPercentage={
+                validCoupon?.discountType === "percent"
+                  ? validCoupon.discount
+                  : 0
+              }
+              discountAmount={
+                validCoupon?.discountType === "fixed"
+                  ? validCoupon.discount / 100
+                  : 0
+              }
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmation(false)}
+              disabled={isProcessing}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmPayment}
+              disabled={isProcessing}
+              className="bg-[#47B5FF] text-white"
+            >
+              {isProcessing ? (
+                <div className="flex items-center justify-center">
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </div>
+              ) : (
+                "Confirm Payment"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
 const PLANS = [
-    {
-      name: "Free Plan",
+  {
+    name: "Free Plan",
     price: 0,
     displayPrice: "$0",
-      period: "USD/month",
+    period: "USD/month",
     priceId: "free",
     buttonText: "Your current plan",
     buttonClass: "bg-gray-200 text-gray-600 cursor-not-allowed",
-      features: [
-        "AI platform access",
-        "Limited Personal Statement",
-        "Limited Extracurricular Activities",
-        "General Application",
-      ],
-    },
-    {
-      name: "Premium Plan",
+    features: [
+      "AI platform access",
+      "Limited Personal Statement",
+      "Limited Extracurricular Activities",
+      "General Application",
+    ],
+  },
+  {
+    name: "Premium Plan",
     price: 10,
     displayPrice: "$10",
-      period: "USD/month",
+    period: "USD/month",
     priceId: PRICE_IDS.monthly,
     buttonText: "Upgrade to Premium",
     buttonClass: "bg-[#47B5FF] text-white hover:bg-[#47B5FF]/90",
-      features: [
-        "AI platform access",
-        "Unlimited Personal Statements",
-        "Unlimited Supplemental Essays",
-        "Extracurricular Activities with AI",
-        "Advanced & Unique Application",
-        "Recommendation Letters with AI",
-        "Cancel anytime.",
-      ],
-    },
-    {
-      name: "Premium Plan for a year",
+    features: [
+      "AI platform access",
+      "Unlimited Personal Statements",
+      "Unlimited Supplemental Essays",
+      "Extracurricular Activities with AI",
+      "Advanced & Unique Application",
+      "Recommendation Letters with AI",
+      "Cancel anytime.",
+    ],
+  },
+  {
+    name: "Premium Plan for a year",
     price: 80,
     displayPrice: "$80",
-      period: "USD/year",
+    period: "USD/year",
     priceId: PRICE_IDS.yearly,
     buttonText: "Upgrade to Year Premium",
     buttonClass: "bg-[#47B5FF] text-white hover:bg-[#47B5FF]/90",
-      features: [
-        "A 33% Discount in yearly plan",
-        "AI platform access",
-        "Unlimited Personal Statements",
-        "Unlimited Supplemental Essays",
-        "Extracurricular Activities with AI",
-        "Advanced & Unique Application",
-        "Recommendation Letters with AI",
-        "Cancel anytime.",
-      ],
+    features: [
+      "A 33% Discount in yearly plan",
+      "AI platform access",
+      "Unlimited Personal Statements",
+      "Unlimited Supplemental Essays",
+      "Extracurricular Activities with AI",
+      "Advanced & Unique Application",
+      "Recommendation Letters with AI",
+      "Cancel anytime.",
+    ],
   },
 ];
 
@@ -305,37 +440,138 @@ const PriceBreakdown = ({
   );
 };
 
+function formatDate(dateString: string) {
+  return new Date(dateString).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function SubscriptionDetails({
+  subscription,
+  onCancel,
+  isCancelling,
+}: {
+  subscription: any;
+  onCancel: () => void;
+  isCancelling: boolean;
+}) {
+  const isCanceled = subscription?.cancelAtPeriodEnd;
+  const endDate = subscription?.currentPeriodEnd
+    ? formatDate(subscription.currentPeriodEnd)
+    : null;
+  const startDate = subscription?.currentPeriodStart
+    ? formatDate(subscription.currentPeriodStart)
+    : null;
+
+  return (
+    <div className="mb-8 p-6 bg-white rounded-lg shadow-sm border">
+      <div className="flex justify-between items-start mb-4">
+        <h2 className="text-xl font-semibold">Current Plan Details</h2>
+        {subscription?.status === "active" &&
+          !isCanceled &&
+          subscription?.planType !== "Free Plan" && (
+            <Button
+              onClick={onCancel}
+              disabled={isCancelling}
+              variant="outline"
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              {isCancelling ? (
+                <div className="flex items-center">
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Cancelling...
+                </div>
+              ) : (
+                "Cancel Plan"
+              )}
+            </Button>
+          )}
+      </div>
+      <div className="space-y-3">
+        <div className="flex justify-between items-center">
+          <span className="text-gray-600">Plan Type:</span>
+          <span className="font-medium">
+            {subscription?.planType || "Free Plan"}
+          </span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-gray-600">Status:</span>
+          <span
+            className={cn(
+              "font-medium",
+              isCanceled ? "text-yellow-600" : "text-green-600"
+            )}
+          >
+            {isCanceled ? "Canceling" : "Active"}
+          </span>
+        </div>
+        {startDate && (
+          <div className="flex justify-between items-center">
+            <span className="text-gray-600">Started On:</span>
+            <span className="font-medium">{startDate}</span>
+          </div>
+        )}
+        {endDate && (
+          <div className="flex justify-between items-center">
+            <span className="text-gray-600">
+              {isCanceled ? "Access Until" : "Renews On"}:
+            </span>
+            <span className="font-medium">{endDate}</span>
+          </div>
+        )}
+        {isCanceled && (
+          <p className="text-sm text-yellow-600 mt-4">
+            Your subscription will remain active until {endDate}, after which it
+            will revert to the free plan.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function PaymentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [currentPlan, setCurrentPlan] = useState<string>("free");
   const [loading, setLoading] = useState(true);
   const [isLoading, setIsLoading] = useState<string | null>(null);
-  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [couponCode, setCouponCode] = useState("");
-  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<(typeof PLANS)[0] | null>(
     null
   );
-  const [validCoupon, setValidCoupon] = useState<{
-    discount: number;
-    discountType: "percent" | "fixed";
-    code: string;
-  } | null>(null);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [subscriptionDetails, setSubscriptionDetails] = useState<any>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
     async function loadSubscription() {
       try {
         const subscription = await getUserSubscription();
         if (subscription) {
+          // Set current plan based on the subscription's priceId
           setCurrentPlan(subscription.priceId);
-          // If user has an active subscription, show their current plan details
+
+          // Set full subscription details
+          setSubscriptionDetails({
+            status: subscription.status,
+            currentPeriodEnd: subscription.currentPeriodEnd,
+            currentPeriodStart: subscription.currentPeriodStart,
+            cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+            planType: subscription.planType,
+            isYearly: subscription.isYearly,
+            plan: subscription.plan,
+          });
+
+          // Show toast with correct plan type
           if (subscription.status === "active") {
             const endDate = new Date(subscription.currentPeriodEnd);
             toast.info(
-              `Your current plan is valid until ${endDate.toLocaleDateString()}`
+              `Your ${
+                subscription.planType
+              } is valid until ${endDate.toLocaleDateString()}`
             );
           }
         }
@@ -349,7 +585,6 @@ export default function PaymentPage() {
 
     loadSubscription();
 
-    // Check for success or canceled status
     if (searchParams?.get("success")) {
       toast.success("Payment successful! Your plan has been upgraded.");
       router.push("/dashboard");
@@ -359,45 +594,16 @@ export default function PaymentPage() {
     }
   }, [searchParams, router]);
 
-  async function handleCancel() {
+  const handleUpgrade = async (plan: (typeof PLANS)[0]) => {
     try {
-      setIsProcessing(true);
-
-      const response = await fetch("/api/stripe/cancel-subscription", {
-        method: "POST",
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to cancel subscription");
-      }
-
-      toast.success(
-        "Subscription cancelled successfully. Your plan has been reverted to free plan."
-      );
-      window.location.reload();
-    } catch (error: any) {
-      console.error("Error cancelling subscription:", error);
-      toast.error(
-        error.message || "Failed to cancel subscription. Please try again."
-      );
-    } finally {
-      setIsProcessing(false);
-    }
-  }
-
-  const handleUpgrade = async (priceId: string) => {
-    try {
-      setIsLoading(priceId);
-      setSelectedPlanId(priceId);
+      setIsLoading(plan.priceId);
       const response = await fetch("/api/stripe/create-checkout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          priceId,
+          priceId: plan.priceId,
         }),
       });
 
@@ -408,6 +614,7 @@ export default function PaymentPage() {
       }
 
       setClientSecret(data.clientSecret);
+      setSelectedPlan(plan);
     } catch (error: any) {
       console.error("Error creating checkout session:", error);
       setError(error.message || "Failed to start checkout process");
@@ -417,51 +624,57 @@ export default function PaymentPage() {
     }
   };
 
-  // Function to handle plan selection
-  const handlePlanSelect = (plan: (typeof PLANS)[0]) => {
-    setSelectedPlan(plan);
-    setSelectedPlanId(plan.priceId);
-  };
-
-  // Modify validateCoupon function
-  const validateCoupon = async () => {
-    if (!couponCode.trim() || !selectedPlan) return;
-
-    setIsValidatingCoupon(true);
+  const handleCancelSubscription = async () => {
     try {
-      const response = await fetch("/api/stripe/validate-coupon", {
+      console.log("Starting subscription cancellation process...");
+      setIsCancelling(true);
+
+      const response = await fetch("/api/stripe/cancel-subscription", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code: couponCode,
-          planPrice: selectedPlan.price,
-        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
 
+      console.log("Cancel subscription response status:", response.status);
       const data = await response.json();
+      console.log("Cancel subscription response data:", data);
 
-      if (response.ok && data.valid) {
-        setValidCoupon({
-          discount: data.discount,
-          discountType: data.discountType,
-          code: couponCode,
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to cancel subscription");
+      }
+
+      toast.success(data.message || "Your subscription has been cancelled");
+      console.log("Successfully cancelled subscription, refreshing details...");
+
+      // Refresh subscription details
+      const subscription = await getUserSubscription();
+      console.log("Updated subscription details:", subscription);
+
+      if (subscription) {
+        setCurrentPlan(subscription.plan || "free");
+        setSubscriptionDetails({
+          status: subscription.status,
+          currentPeriodEnd: subscription.currentPeriodEnd,
+          currentPeriodStart: subscription.currentPeriodStart,
+          cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+          planType: subscription.planType,
+          isYearly: subscription.isYearly,
+          plan: subscription.plan,
         });
-        toast.success(
-          `Coupon applied: ${
-            data.discountType === "percent"
-              ? `${data.discount}% off`
-              : `$${data.discount / 100} off`
-          }`
-        );
-      } else {
-        setValidCoupon(null);
-        toast.error(data.message || "Invalid coupon code");
+        console.log("Subscription state updated successfully");
       }
     } catch (error) {
-      console.error("Error validating coupon:", error);
-      toast.error("Failed to validate coupon. Please try again.");
+      console.error("Error cancelling subscription:", {
+        error,
+        message: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      toast.error(
+        error instanceof Error ? error.message : "Failed to cancel subscription"
+      );
     } finally {
-      setIsValidatingCoupon(false);
+      setIsCancelling(false);
     }
   };
 
@@ -469,11 +682,20 @@ export default function PaymentPage() {
     return <div>Loading...</div>;
   }
 
+  const currentPlanDetails = PLANS.find((plan) => plan.priceId === currentPlan);
+
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="container max-w-5xl mx-auto p-6 space-y-8">
+      {subscriptionDetails && (
+        <SubscriptionDetails
+          subscription={subscriptionDetails}
+          onCancel={handleCancelSubscription}
+          isCancelling={isCancelling}
+        />
+      )}
       <h1 className="text-3xl font-bold text-center mb-12">
-            Upgrade your plan
-          </h1>
+        {currentPlan === "free" ? "Upgrade your plan" : "Available Plans"}
+      </h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {PLANS.map((plan) => (
@@ -523,7 +745,7 @@ export default function PaymentPage() {
               </button>
             ) : (
               <button
-                onClick={() => handlePlanSelect(plan)}
+                onClick={() => handleUpgrade(plan)}
                 disabled={
                   isLoading === plan.priceId || plan.priceId === currentPlan
                 }
@@ -546,94 +768,15 @@ export default function PaymentPage() {
                 )}
               </button>
             )}
-            </div>
-          ))}
-        </div>
-
-      {selectedPlan && selectedPlan.priceId !== "free" && (
-        <div className="mt-8 max-w-2xl mx-auto">
-          <div className="rounded-[20px] border bg-white p-6 shadow-sm">
-            <h3 className="text-xl font-semibold mb-6">Order Summary</h3>
-
-            {/* Coupon Input */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Have a coupon code?
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={couponCode}
-                  onChange={(e) => setCouponCode(e.target.value)}
-                  placeholder="Enter code"
-                  className="flex-1 rounded-full border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#47B5FF] focus:border-transparent"
-                />
-                <Button
-                  onClick={validateCoupon}
-                  disabled={isValidatingCoupon || !couponCode.trim()}
-                  className="rounded-full bg-[#47B5FF] text-white hover:bg-[#47B5FF]/90"
-                >
-                  {isValidatingCoupon ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    "Apply"
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            {/* Price Breakdown */}
-            <PriceBreakdown
-              basePrice={selectedPlan.price}
-              discountPercentage={
-                validCoupon?.discountType === "percent"
-                  ? validCoupon.discount
-                  : 0
-              }
-              discountAmount={
-                validCoupon?.discountType === "fixed"
-                  ? validCoupon.discount / 100
-                  : 0
-              }
-            />
-
-            <div className="mt-6 flex justify-end gap-4">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSelectedPlan(null);
-                  setSelectedPlanId(null);
-                  setValidCoupon(null);
-                  setCouponCode("");
-                }}
-                className="rounded-full"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => handleUpgrade(selectedPlan.priceId)}
-                disabled={isLoading === selectedPlan.priceId}
-                className="rounded-full bg-[#47B5FF] text-white hover:bg-[#47B5FF]/90"
-              >
-                {isLoading === selectedPlan.priceId ? (
-                  <div className="flex items-center justify-center">
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Processing...
-                  </div>
-                ) : (
-                  "Confirm Payment"
-                )}
-              </Button>
-            </div>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
 
-      {clientSecret && selectedPlanId && (
+      {clientSecret && selectedPlan && (
         <div className="mt-8 max-w-2xl mx-auto p-6 border rounded-[20px] bg-white shadow-sm">
           <div className="text-center mb-6">
             <h3 className="text-xl font-semibold mb-2">
-              Complete your upgrade
+              Complete your upgrade to {selectedPlan.name}
             </h3>
             <p className="text-gray-600">Enter your payment details below</p>
           </div>
@@ -653,10 +796,11 @@ export default function PaymentPage() {
             <CheckoutForm
               onClose={() => {
                 setClientSecret(null);
-                setSelectedPlanId(null);
+                setSelectedPlan(null);
                 setError(null);
               }}
-              priceId={selectedPlanId}
+              priceId={selectedPlan.priceId}
+              plan={selectedPlan}
             />
           </Elements>
         </div>

@@ -20,6 +20,27 @@ export async function POST(req: Request) {
       couponCode,
     });
 
+    // Validate coupon if provided
+    let validatedCoupon;
+    if (couponCode) {
+      try {
+        validatedCoupon = await stripe.coupons.retrieve(couponCode);
+        if (!validatedCoupon.valid) {
+          return NextResponse.json(
+            { error: "Invalid or expired coupon" },
+            { status: 400 }
+          );
+        }
+        console.log("✅ Coupon validated:", validatedCoupon.id);
+      } catch (error) {
+        console.error("❌ Invalid coupon:", error);
+        return NextResponse.json(
+          { error: "Invalid coupon code" },
+          { status: 400 }
+        );
+      }
+    }
+
     // Create checkout session configuration
     const sessionConfig: any = {
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,
@@ -34,17 +55,18 @@ export async function POST(req: Request) {
       ],
       metadata: {
         userId,
+        couponCode: validatedCoupon?.id,
       },
     };
 
-    // If a specific coupon is provided, use discounts
-    if (couponCode) {
-      console.log("🎫 Adding specific coupon:", couponCode);
+    // Apply coupon if validated
+    if (validatedCoupon) {
+      console.log("🎫 Adding validated coupon:", validatedCoupon.id);
       sessionConfig.discounts = [{
-        coupon: couponCode,
+        coupon: validatedCoupon.id,
       }];
     } else {
-      // If no specific coupon, allow promotion codes input
+      // Only allow promotion codes input if no specific coupon is provided
       console.log("✨ Enabling promotion codes input");
       sessionConfig.allow_promotion_codes = true;
     }
@@ -60,7 +82,8 @@ export async function POST(req: Request) {
 
     console.log("✅ Checkout session created:", {
       sessionId: session.id,
-      url: session.url
+      url: session.url,
+      appliedCoupon: validatedCoupon?.id
     });
 
     return NextResponse.json({ url: session.url });

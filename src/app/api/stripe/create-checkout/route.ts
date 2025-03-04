@@ -39,6 +39,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid price ID" }, { status: 400 });
     }
 
+    // Get user from database
     const user = await db.query.users.findFirst({
       where: eq(users.clerkId, clerkId),
     });
@@ -47,10 +48,33 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Create a PaymentIntent instead of a Checkout Session
+    // Get or create Stripe customer
+    let stripeCustomerId = user.stripeCustomerId;
+    
+    if (!stripeCustomerId) {
+      // Create new Stripe customer
+      const customer = await stripe.customers.create({
+        email: authResult.sessionClaims?.email as string,
+        name: `${user.name} ${user.surname}`,
+        metadata: {
+          userId: user.id,
+          clerkId: user.clerkId
+        }
+      });
+      
+      stripeCustomerId = customer.id;
+      
+      // Update user with Stripe customer ID
+      await db.update(users)
+        .set({ stripeCustomerId: customer.id })
+        .where(eq(users.id, user.id));
+    }
+
+    // Create a PaymentIntent
     const paymentIntent = await stripe.paymentIntents.create({
       amount: getPlanAmount(priceId),
       currency: 'usd',
+      customer: stripeCustomerId,
       automatic_payment_methods: {
         enabled: true,
       },
@@ -66,19 +90,9 @@ export async function POST(req: Request) {
       clientSecret: paymentIntent.client_secret,
     });
   } catch (error) {
-    console.error("Payment intent creation error:", {
-      error: error instanceof Error ? {
-        message: error.message,
-        name: error.name,
-        stack: error.stack,
-      } : error,
-    });
-
+    console.error('Error creating checkout session:', error);
     return NextResponse.json(
-      { 
-        error: "Failed to create payment intent",
-        details: error instanceof Error ? error.message : "Unknown error"
-      },
+      { error: 'Failed to create checkout session' },
       { status: 500 }
     );
   }
@@ -108,12 +122,5 @@ function getPlanDescription(priceId: string): string {
 }
 
 function getPlanAmount(priceId: string): number {
-  switch (priceId) {
-    case PRICE_IDS.monthly:
-      return 1000; // $10.00
-    case PRICE_IDS.yearly:
-      return 8000; // $80.00
-    default:
-      return 1000;
-  }
+  return priceId === PRICE_IDS.yearly ? 8000 : 1000; // $80 for yearly, $10 for monthly
 } 
