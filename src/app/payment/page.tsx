@@ -189,52 +189,71 @@ function CheckoutForm({
       }
 
       if (paymentIntent.status === "succeeded") {
-        // Update subscription
-        const updateResponse = await fetch("/api/stripe/confirm-payment", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            priceId,
-            paymentIntentId: paymentIntent.id,
-            subscriptionId: data.subscriptionId,
-          }),
-        });
-
-        const updateData = await updateResponse.json();
-
-        if (!updateResponse.ok) {
-          throw new Error(updateData.error || "Failed to update subscription");
-        }
-
-        toast.success(`Successfully upgraded to ${plan.name}!`);
-
-        // Refresh subscription details before redirecting
-        const subscription = await getUserSubscription();
-        if (subscription) {
-          setCurrentPlan(
-            subscription.plan === "yearly"
-              ? PRICE_IDS.yearly
-              : subscription.plan === "monthly"
-              ? PRICE_IDS.monthly
-              : "free"
-          );
-          setSubscriptionDetails({
-            status: subscription.status,
-            currentPeriodEnd: subscription.currentPeriodEnd,
-            currentPeriodStart: subscription.currentPeriodStart,
-            cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
-            planType: subscription.planType,
-            isYearly: subscription.plan === "yearly",
-            plan: subscription.plan,
+        try {
+          // Update subscription
+          const updateResponse = await fetch("/api/stripe/confirm-payment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              priceId,
+              paymentIntentId: paymentIntent.id,
+              subscriptionId: data.subscriptionId,
+            }),
           });
-        }
 
-        router.push("/dashboard?success=true");
+          const updateData = await updateResponse.json();
+
+          if (!updateResponse.ok) {
+            throw new Error(
+              updateData.error || "Failed to update subscription"
+            );
+          }
+
+          toast.success(`Successfully upgraded to ${plan.name}!`);
+
+          try {
+            // Refresh subscription details before redirecting
+            const subscription = await getUserSubscription();
+            if (subscription) {
+              setCurrentPlan(
+                subscription.plan === "yearly"
+                  ? PRICE_IDS.yearly
+                  : subscription.plan === "monthly"
+                  ? PRICE_IDS.monthly
+                  : "free"
+              );
+              setSubscriptionDetails({
+                status: subscription.status,
+                currentPeriodEnd: subscription.currentPeriodEnd,
+                currentPeriodStart: subscription.currentPeriodStart,
+                cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+                planType: subscription.planType,
+                isYearly: subscription.plan === "yearly",
+                plan: subscription.plan,
+              });
+            }
+          } catch (refreshError) {
+            console.error(
+              "Error refreshing subscription details:",
+              refreshError
+            );
+            // Continue with redirect even if refresh fails
+          }
+
+          // Redirect after successful payment
+          router.push("/dashboard?success=true");
+        } catch (updateError) {
+          console.error("Error updating subscription:", updateError);
+          // Still show success since payment went through
+          toast.success(
+            `Payment successful! Please refresh the page to see updated details.`
+          );
+          router.push("/dashboard?success=true");
+        }
       }
     } catch (err: any) {
-      console.error("Payment error:", err);
-      setError(err.message || "Payment failed");
-      toast.error(err.message || "Payment failed");
+      console.error("Error confirming payment:", err);
+      toast.error(err.message || "Failed to confirm payment");
     } finally {
       setIsProcessing(false);
       setShowConfirmation(false);
