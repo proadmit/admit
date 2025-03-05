@@ -4,6 +4,7 @@ import { stripe } from "@/lib/stripe";
 import { db } from "@/lib/db";
 import { users, subscriptions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { headers } from "next/headers";
 import Stripe from "stripe";
 
 // Helper function to sync subscription data
@@ -85,7 +86,11 @@ async function syncSubscriptionData(userId: string) {
 
 export async function POST(req: Request) {
   try {
-    const { userId: clerkId } = auth();
+    // Ensure headers are awaited
+    await headers();
+    const authResult = await auth();
+    const clerkId = authResult?.userId;
+    
     if (!clerkId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -101,47 +106,89 @@ export async function POST(req: Request) {
     });
 
     if (!user) {
+      console.log("User not found:", clerkId);
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    console.log("Found user subscription data:", {
+      userId: user.id,
+      subscription: user.subscription,
+      plan: user.plan
+    });
+
     const subscription = user.subscription;
     if (!subscription?.stripeSubscriptionId) {
+      console.log("No active subscription found for user:", {
+        userId: user.id,
+        subscriptionData: subscription
+      });
       return NextResponse.json({ error: "No active subscription found" }, { status: 404 });
     }
 
     try {
+      console.log("Attempting to cancel Stripe subscription:", subscription.stripeSubscriptionId);
+      
       // Cancel the subscription in Stripe
-      await stripe.subscriptions.cancel(subscription.stripeSubscriptionId);
+      const canceledSubscription = await stripe.subscriptions.cancel(
+        subscription.stripeSubscriptionId
+      );
+
+      console.log("Stripe subscription cancelled successfully:", {
+        stripeSubscriptionId: subscription.stripeSubscriptionId,
+        status: canceledSubscription.status
+      });
 
       // Delete subscription record
       await db.delete(subscriptions)
         .where(eq(subscriptions.userId, user.id));
 
+      console.log("Deleted subscription record from database");
+
       // Reset user to free plan
-    await db.update(users)
-      .set({
+      await db.update(users)
+        .set({
           plan: 'free',
           updatedAt: new Date()
-      })
-      .where(eq(users.id, user.id));
+        })
+        .where(eq(users.id, user.id));
 
-      console.log("Successfully cancelled subscription:", {
+      console.log("Reset user to free plan:", {
         userId: user.id,
-        subscriptionId: subscription.stripeSubscriptionId
+        previousPlan: user.plan
       });
 
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ 
+        success: true,
+        message: "Subscription cancelled successfully"
+      });
     } catch (error: any) {
-      console.error("Error cancelling subscription:", error);
+      console.error("Error cancelling subscription:", {
+        error: error,
+        code: error.code,
+        type: error.type,
+        message: error.message,
+        subscriptionId: subscription.stripeSubscriptionId
+      });
+      
       return NextResponse.json(
-        { error: "Failed to cancel subscription" },
+        { 
+          error: "Failed to cancel subscription",
+          details: error.message
+        },
         { status: 500 }
       );
     }
   } catch (error: any) {
-    console.error("Subscription cancellation failed:", error);
+    console.error("Subscription cancellation failed:", {
+      error: error,
+      message: error.message,
+      stack: error.stack
+    });
     return NextResponse.json(
-      { error: "Failed to cancel subscription" },
+      { 
+        error: "Failed to process cancellation request",
+        details: error.message
+      },
       { status: 500 }
     );
   }

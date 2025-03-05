@@ -23,29 +23,36 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { paymentIntentId, priceId } = body;
+    const { paymentIntentId, priceId, subscriptionId } = body;
 
     console.log("Received payment confirmation:", { 
       paymentIntentId, 
       priceId,
+      subscriptionId,
       monthlyPriceId: PRICE_IDS.monthly,
       yearlyPriceId: PRICE_IDS.yearly
     });
 
-    if (!paymentIntentId || !priceId) {
+    if (!paymentIntentId || !priceId || !subscriptionId) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     // Verify the payment intent
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
-      expand: ['customer', 'invoice.subscription']
-    });
-    
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
     console.log("Payment intent status:", paymentIntent.status);
     
     if (paymentIntent.status !== "succeeded") {
       return NextResponse.json({ error: "Payment not successful" }, { status: 400 });
     }
+
+    // Get subscription details from Stripe
+    const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId);
+    console.log("Retrieved Stripe subscription:", {
+      id: stripeSubscription.id,
+      status: stripeSubscription.status,
+      currentPeriodStart: stripeSubscription.current_period_start,
+      currentPeriodEnd: stripeSubscription.current_period_end
+    });
 
     // Get user from database
     const userResult = await db
@@ -80,17 +87,24 @@ export async function POST(req: Request) {
       await db
         .insert(subscriptions)
         .values({
-          id: paymentIntent.invoice?.subscription as string,
+          id: stripeSubscription.id,
           userId: user.id,
-          status: 'active',
+          status: stripeSubscription.status,
           priceId,
-          stripeSubscriptionId: paymentIntent.invoice?.subscription as string,
+          stripeSubscriptionId: stripeSubscription.id,
           quantity: 1,
-          cancelAtPeriodEnd: false,
-          currentPeriodStart: new Date(),
-          currentPeriodEnd: new Date(Date.now() + (plan === 'yearly' ? 365 : 30) * 24 * 60 * 60 * 1000),
-          createdAt: new Date(),
+          cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
+          currentPeriodStart: new Date(stripeSubscription.current_period_start * 1000),
+          currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
+          createdAt: new Date(stripeSubscription.created * 1000),
         });
+
+      console.log("Created subscription record:", {
+        id: stripeSubscription.id,
+        userId: user.id,
+        status: stripeSubscription.status,
+        priceId
+      });
 
       // Update user's plan
       await db
@@ -106,10 +120,10 @@ export async function POST(req: Request) {
         message: "Subscription updated successfully",
         plan,
         subscription: {
-          id: paymentIntent.invoice?.subscription,
-          status: 'active',
-          currentPeriodEnd: new Date(Date.now() + (plan === 'yearly' ? 365 : 30) * 24 * 60 * 60 * 1000),
-          cancelAtPeriodEnd: false
+          id: stripeSubscription.id,
+          status: stripeSubscription.status,
+          currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
+          cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end
         }
       });
     } catch (dbError) {

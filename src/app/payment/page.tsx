@@ -196,6 +196,7 @@ function CheckoutForm({
           body: JSON.stringify({
             priceId,
             paymentIntentId: paymentIntent.id,
+            subscriptionId: data.subscriptionId,
           }),
         });
 
