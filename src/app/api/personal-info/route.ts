@@ -49,15 +49,16 @@ export async function POST(req: Request) {
     const userId = result[0].id;
     console.log("User created/updated with ID:", userId);
 
-    // Create a free subscription
+    // Create a free subscription with a special free plan identifier
     await db.insert(subscriptions).values({
-      id: `sub_free_${userId}`,
+      id: `free_${userId}`, // Changed from sub_free to just free_
       userId: userId,
       status: "active",
       priceId: "free",
       currentPeriodStart: new Date(),
       currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
-      cancelAtPeriodEnd: false
+      cancelAtPeriodEnd: false,
+      stripeSubscriptionId: null // Add this field to indicate it's not a Stripe subscription
     }).onConflictDoNothing();
 
     console.log("Free subscription created");

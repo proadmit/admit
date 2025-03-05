@@ -41,10 +41,14 @@ function CheckoutForm({
   onClose,
   priceId,
   plan,
+  setCurrentPlan,
+  setSubscriptionDetails,
 }: {
   onClose: () => void;
   priceId: string;
   plan: (typeof PLANS)[0];
+  setCurrentPlan: (plan: string) => void;
+  setSubscriptionDetails: (details: any) => void;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -134,7 +138,7 @@ function CheckoutForm({
 
     const { error: submitError } = await elements.submit();
     if (submitError) {
-      setError(submitError.message);
+      setError(submitError.message || "Error submitting payment form");
       return;
     }
 
@@ -155,7 +159,7 @@ function CheckoutForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           priceId,
-          couponCode: validCoupon?.code,
+          couponId: validCoupon?.id,
         }),
       });
 
@@ -185,8 +189,8 @@ function CheckoutForm({
       }
 
       if (paymentIntent.status === "succeeded") {
-        // Update plan
-        const updateResponse = await fetch("/api/update-plan", {
+        // Update subscription
+        const updateResponse = await fetch("/api/stripe/confirm-payment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -195,11 +199,35 @@ function CheckoutForm({
           }),
         });
 
+        const updateData = await updateResponse.json();
+
         if (!updateResponse.ok) {
-          throw new Error("Failed to update plan");
+          throw new Error(updateData.error || "Failed to update subscription");
         }
 
         toast.success(`Successfully upgraded to ${plan.name}!`);
+
+        // Refresh subscription details before redirecting
+        const subscription = await getUserSubscription();
+        if (subscription) {
+          setCurrentPlan(
+            subscription.plan === "yearly"
+              ? PRICE_IDS.yearly
+              : subscription.plan === "monthly"
+              ? PRICE_IDS.monthly
+              : "free"
+          );
+          setSubscriptionDetails({
+            status: subscription.status,
+            currentPeriodEnd: subscription.currentPeriodEnd,
+            currentPeriodStart: subscription.currentPeriodStart,
+            cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+            planType: subscription.planType,
+            isYearly: subscription.plan === "yearly",
+            plan: subscription.plan,
+          });
+        }
+
         router.push("/dashboard?success=true");
       }
     } catch (err: any) {
@@ -471,7 +499,7 @@ function SubscriptionDetails({
         <h2 className="text-xl font-semibold">Current Plan Details</h2>
         {subscription?.status === "active" &&
           !isCanceled &&
-          subscription?.planType !== "Free Plan" && (
+          subscription?.plan !== "free" && (
             <Button
               onClick={onCancel}
               disabled={isCancelling}
@@ -493,7 +521,11 @@ function SubscriptionDetails({
         <div className="flex justify-between items-center">
           <span className="text-gray-600">Plan Type:</span>
           <span className="font-medium">
-            {subscription?.planType || "Free Plan"}
+            {subscription?.plan === "yearly"
+              ? "Premium Plan (Yearly)"
+              : subscription?.plan === "monthly"
+              ? "Premium Plan (Monthly)"
+              : "Free Plan"}
           </span>
         </div>
         <div className="flex justify-between items-center">
@@ -551,8 +583,22 @@ export default function PaymentPage() {
       try {
         const subscription = await getUserSubscription();
         if (subscription) {
-          // Set current plan based on the subscription's priceId
-          setCurrentPlan(subscription.priceId);
+          console.log("Loaded subscription:", {
+            subscription,
+            yearlyPriceId: PRICE_IDS.yearly,
+            monthlyPriceId: PRICE_IDS.monthly,
+            currentPriceId: subscription.priceId,
+            plan: subscription.plan,
+          });
+
+          // Set current plan based on the subscription's plan type
+          if (subscription.plan === "yearly") {
+            setCurrentPlan(PRICE_IDS.yearly);
+          } else if (subscription.plan === "monthly") {
+            setCurrentPlan(PRICE_IDS.monthly);
+          } else {
+            setCurrentPlan("free");
+          }
 
           // Set full subscription details
           setSubscriptionDetails({
@@ -561,7 +607,7 @@ export default function PaymentPage() {
             currentPeriodStart: subscription.currentPeriodStart,
             cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
             planType: subscription.planType,
-            isYearly: subscription.isYearly,
+            isYearly: subscription.plan === "yearly",
             plan: subscription.plan,
           });
 
@@ -570,7 +616,9 @@ export default function PaymentPage() {
             const endDate = new Date(subscription.currentPeriodEnd);
             toast.info(
               `Your ${
-                subscription.planType
+                subscription.plan === "yearly"
+                  ? "Premium Plan (Yearly)"
+                  : "Premium Plan (Monthly)"
               } is valid until ${endDate.toLocaleDateString()}`
             );
           }
@@ -626,7 +674,6 @@ export default function PaymentPage() {
 
   const handleCancelSubscription = async () => {
     try {
-      console.log("Starting subscription cancellation process...");
       setIsCancelling(true);
 
       const response = await fetch("/api/stripe/cancel-subscription", {
@@ -636,40 +683,36 @@ export default function PaymentPage() {
         },
       });
 
-      console.log("Cancel subscription response status:", response.status);
       const data = await response.json();
-      console.log("Cancel subscription response data:", data);
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to cancel subscription");
       }
 
       toast.success(data.message || "Your subscription has been cancelled");
-      console.log("Successfully cancelled subscription, refreshing details...");
 
       // Refresh subscription details
       const subscription = await getUserSubscription();
-      console.log("Updated subscription details:", subscription);
-
       if (subscription) {
-        setCurrentPlan(subscription.plan || "free");
+        setCurrentPlan(
+          subscription.plan === "yearly"
+            ? PRICE_IDS.yearly
+            : subscription.plan === "monthly"
+            ? PRICE_IDS.monthly
+            : "free"
+        );
         setSubscriptionDetails({
           status: subscription.status,
           currentPeriodEnd: subscription.currentPeriodEnd,
           currentPeriodStart: subscription.currentPeriodStart,
           cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
           planType: subscription.planType,
-          isYearly: subscription.isYearly,
+          isYearly: subscription.plan === "yearly",
           plan: subscription.plan,
         });
-        console.log("Subscription state updated successfully");
       }
     } catch (error) {
-      console.error("Error cancelling subscription:", {
-        error,
-        message: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
-      });
+      console.error("Error cancelling subscription:", error);
       toast.error(
         error instanceof Error ? error.message : "Failed to cancel subscription"
       );
@@ -681,8 +724,6 @@ export default function PaymentPage() {
   if (loading) {
     return <div>Loading...</div>;
   }
-
-  const currentPlanDetails = PLANS.find((plan) => plan.priceId === currentPlan);
 
   return (
     <div className="container max-w-5xl mx-auto p-6 space-y-8">
@@ -698,62 +739,79 @@ export default function PaymentPage() {
       </h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {PLANS.map((plan) => (
-          <div
-            key={plan.priceId}
-            className={cn(
-              "rounded-[20px] border p-6 flex flex-col justify-between bg-white shadow-sm",
-              selectedPlan?.priceId === plan.priceId &&
-                "border-[#47B5FF] ring-1 ring-[#47B5FF]"
-            )}
-          >
-            <div>
-              <h2 className="text-xl font-semibold mb-2">{plan.name}</h2>
-              <div className="flex items-baseline mb-6">
-                <span className="text-3xl font-bold">{plan.displayPrice}</span>
-                <span className="text-gray-500 ml-1">{plan.period}</span>
+        {PLANS.map((plan) => {
+          // Determine if this is the current plan
+          const isCurrentPlan =
+            (plan.priceId === PRICE_IDS.monthly &&
+              currentPlan === PRICE_IDS.monthly) ||
+            (plan.priceId === PRICE_IDS.yearly &&
+              currentPlan === PRICE_IDS.yearly) ||
+            (plan.priceId === "free" && currentPlan === "free");
+
+          console.log("Plan comparison:", {
+            planPriceId: plan.priceId,
+            currentPlan,
+            isCurrentPlan,
+            yearlyMatch:
+              plan.priceId === PRICE_IDS.yearly &&
+              currentPlan === PRICE_IDS.yearly,
+            monthlyMatch:
+              plan.priceId === PRICE_IDS.monthly &&
+              currentPlan === PRICE_IDS.monthly,
+            planName: plan.name,
+          });
+
+          return (
+            <div
+              key={plan.priceId}
+              className={cn(
+                "rounded-[20px] border p-6 flex flex-col justify-between bg-white shadow-sm",
+                isCurrentPlan && "border-[#47B5FF] ring-1 ring-[#47B5FF]",
+                selectedPlan?.priceId === plan.priceId &&
+                  "border-[#47B5FF] ring-1 ring-[#47B5FF]"
+              )}
+            >
+              <div>
+                <h2 className="text-xl font-semibold mb-2">{plan.name}</h2>
+                <div className="flex items-baseline mb-6">
+                  <span className="text-3xl font-bold">
+                    {plan.displayPrice}
+                  </span>
+                  <span className="text-gray-500 ml-1">{plan.period}</span>
+                </div>
+
+                <ul className="space-y-3">
+                  {plan.features.map((feature, index) => (
+                    <li key={index} className="flex items-start gap-2">
+                      <svg
+                        className="w-5 h-5 text-[#47B5FF] flex-shrink-0"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      <span className="text-gray-600">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
 
-              <ul className="space-y-3">
-                {plan.features.map((feature, index) => (
-                  <li key={index} className="flex items-start gap-2">
-                    <svg
-                      className="w-5 h-5 text-[#47B5FF] flex-shrink-0"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    <span className="text-gray-600">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {plan.priceId === "free" ? (
               <button
-                disabled
-                className="mt-6 w-full py-3 px-4 rounded-full font-medium bg-gray-100 text-gray-500 cursor-not-allowed"
-              >
-                Your current plan
-              </button>
-            ) : (
-              <button
-                onClick={() => handleUpgrade(plan)}
-                disabled={
-                  isLoading === plan.priceId || plan.priceId === currentPlan
-                }
+                onClick={() => !isCurrentPlan && handleUpgrade(plan)}
+                disabled={isLoading === plan.priceId || isCurrentPlan}
                 className={cn(
-                  "mt-6 w-full py-3 px-4 rounded-full font-medium",
-                  plan.priceId === currentPlan
+                  "mt-6 w-full py-3 px-4 rounded-full font-medium transition-colors",
+                  isCurrentPlan
+                    ? "bg-green-100 text-green-700 cursor-not-allowed"
+                    : plan.priceId === "free"
                     ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                    : "bg-[#47B5FF] text-white hover:bg-[#47B5FF]/90 transition-colors"
+                    : "bg-[#47B5FF] text-white hover:bg-[#47B5FF]/90"
                 )}
               >
                 {isLoading === plan.priceId ? (
@@ -761,15 +819,17 @@ export default function PaymentPage() {
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Processing...
                   </div>
-                ) : plan.priceId === currentPlan ? (
+                ) : isCurrentPlan ? (
                   "Current Plan"
+                ) : plan.priceId === "free" ? (
+                  "Free Plan"
                 ) : (
                   plan.buttonText
                 )}
               </button>
-            )}
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
 
       {clientSecret && selectedPlan && (
@@ -801,6 +861,8 @@ export default function PaymentPage() {
               }}
               priceId={selectedPlan.priceId}
               plan={selectedPlan}
+              setCurrentPlan={setCurrentPlan}
+              setSubscriptionDetails={setSubscriptionDetails}
             />
           </Elements>
         </div>

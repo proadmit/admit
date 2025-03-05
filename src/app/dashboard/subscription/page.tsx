@@ -16,6 +16,7 @@ export const metadata: Metadata = {
 export default async function SubscriptionPage() {
   const { userId } = auth();
 
+
   if (!userId) {
     redirect("/auth/sign-in");
   }

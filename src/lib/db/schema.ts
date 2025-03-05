@@ -40,6 +40,7 @@ export const subscriptions = pgTable("subscriptions", {
   endedAt: timestamp("ended_at"),
   trialStart: timestamp("trial_start"),
   trialEnd: timestamp("trial_end"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
 });
 
 export const personalStatements = pgTable("personal_statements", {

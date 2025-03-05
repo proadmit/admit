@@ -1,8 +1,7 @@
--- Drop all existing tables
+-- Drop all existing tables in the correct order (respecting foreign key constraints)
 DROP TABLE IF EXISTS subscriptions CASCADE;
 DROP TABLE IF EXISTS extracurricular_activities CASCADE;
 DROP TABLE IF EXISTS recommendation_letters CASCADE;
-DROP TABLE IF EXISTS supplemental_essays CASCADE;
 DROP TABLE IF EXISTS personal_statements CASCADE;
 DROP TABLE IF EXISTS college_list CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
@@ -38,23 +37,25 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     ended_at TIMESTAMP WITH TIME ZONE,
     trial_start TIMESTAMP WITH TIME ZONE,
-    trial_end TIMESTAMP WITH TIME ZONE
+    trial_end TIMESTAMP WITH TIME ZONE,
+    stripe_subscription_id TEXT
+);
+
+CREATE TABLE IF NOT EXISTS college_list (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id),
+    college_name TEXT,
+    status TEXT,
+    deadline TIMESTAMP WITH TIME ZONE,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE
 );
 
 CREATE TABLE IF NOT EXISTS personal_statements (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id),
     content TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS supplemental_essays (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id),
-    prompt TEXT NOT NULL,
-    content TEXT NOT NULL,
-    word_limit INTEGER,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
@@ -83,15 +84,4 @@ CREATE TABLE IF NOT EXISTS extracurricular_activities (
     description TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS college_list (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES users(id),
-    college_name TEXT,
-    status TEXT,
-    deadline TIMESTAMP WITH TIME ZONE,
-    notes TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE
 ); 

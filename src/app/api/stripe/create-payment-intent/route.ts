@@ -4,67 +4,85 @@ import { stripe } from "@/lib/stripe";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { headers } from "next/headers";
 
 export async function POST(req: Request) {
   try {
+    await headers();
     const { userId: clerkId } = await auth();
-    
-    const body = await req.json();
-    const { priceId, couponCode } = body;
 
-    // Get the user from database to get their ID
+    const body = await req.json();
+    const { priceId, couponId } = body;
+
+    if (!clerkId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get user from database
     const user = await db.query.users.findFirst({
       where: eq(users.clerkId, clerkId),
     });
 
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 401 });
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     console.log("Creating payment intent for:", {
       clerkId,
       userId: user.id,
       priceId,
-      couponCode
+      couponId
     });
 
-    const price = await stripe.prices.retrieve(priceId);
-    let amount = price.unit_amount || 0;
+    // Create or get customer
+    let customer;
+    const customers = await stripe.customers.list({
+      email: user.email,
+      limit: 1
+    });
 
-    // If coupon code is provided, validate and apply discount
-    if (couponCode) {
-      try {
-        const coupon = await stripe.coupons.retrieve(couponCode);
-        if (coupon.valid) {
-          if (coupon.percent_off) {
-            amount = amount * (1 - coupon.percent_off / 100);
-          } else if (coupon.amount_off) {
-            amount = amount - coupon.amount_off;
-          }
+    if (customers.data.length > 0) {
+      customer = customers.data[0];
+    } else {
+      customer = await stripe.customers.create({
+        email: user.email,
+        metadata: {
+          userId: user.id
         }
-      } catch (error) {
-        console.error("Error validating coupon:", error);
-      }
+      });
     }
 
-    // Create payment intent with coupon metadata
-      const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.max(Math.round(amount), 0), // Ensure amount is not negative
-        currency: "usd",
-        metadata: {
-          userId: user.id,
-        priceId,
-        couponCode: couponCode || undefined,
-        },
-      });
+    // Create subscription
+    const subscription = await stripe.subscriptions.create({
+      customer: customer.id,
+      items: [{ price: priceId }],
+      payment_behavior: 'default_incomplete',
+      payment_settings: { save_default_payment_method: 'on_subscription' },
+      metadata: {
+        userId: user.id
+      },
+      expand: ['latest_invoice.payment_intent']
+    });
 
-    console.log("Created payment intent with metadata:", paymentIntent.metadata);
+    const invoice = subscription.latest_invoice as any;
+    const paymentIntent = invoice.payment_intent as any;
 
-      return NextResponse.json({
-        clientSecret: paymentIntent.client_secret,
-      });
+    console.log("Created payment intent with metadata:", {
+      priceId,
+      userId: user.id,
+      subscriptionId: subscription.id,
+      clientSecret: paymentIntent.client_secret
+    });
+
+    return NextResponse.json({
+      clientSecret: paymentIntent.client_secret,
+      subscriptionId: subscription.id
+    });
   } catch (error) {
     console.error("Error creating payment intent:", error);
-    return NextResponse.json({ error: "Failed to create payment intent" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to create payment intent" },
+      { status: 500 }
+    );
   }
 } 

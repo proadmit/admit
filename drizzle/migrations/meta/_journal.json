@@ -15,6 +15,13 @@
       "when": 1741068511664,
       "tag": "0001_stiff_havok",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1741072463408,
+      "tag": "0002_sour_scarecrow",
+      "breakpoints": true
     }
   ]
 }

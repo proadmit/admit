@@ -25,14 +25,22 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { paymentIntentId, priceId } = body;
 
-    console.log("Received payment confirmation:", { paymentIntentId, priceId });
+    console.log("Received payment confirmation:", { 
+      paymentIntentId, 
+      priceId,
+      monthlyPriceId: PRICE_IDS.monthly,
+      yearlyPriceId: PRICE_IDS.yearly
+    });
 
     if (!paymentIntentId || !priceId) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     // Verify the payment intent
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+      expand: ['customer', 'invoice.subscription']
+    });
+    
     console.log("Payment intent status:", paymentIntent.status);
     
     if (paymentIntent.status !== "succeeded") {
@@ -51,48 +59,57 @@ export async function POST(req: Request) {
     }
 
     const user = userResult[0];
+    
+    // Determine plan type based on price ID
     const plan = priceId === PRICE_IDS.yearly ? 'yearly' : 'monthly';
-    const now = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + (plan === 'yearly' ? 365 : 30));
+    console.log("Determined plan type:", { 
+      priceId, 
+      yearlyPriceId: PRICE_IDS.yearly,
+      monthlyPriceId: PRICE_IDS.monthly,
+      plan,
+      match: priceId === PRICE_IDS.yearly
+    });
 
     try {
-      // Update user's plan
-      await db
-        .update(users)
-        .set({
-          plan,
-          updatedAt: now,
-        })
-        .where(eq(users.id, user.id));
-
       // Delete existing subscription if exists
       await db
         .delete(subscriptions)
         .where(eq(subscriptions.userId, user.id));
 
-      // Create new subscription
+      // Create new subscription record in our database
       await db
         .insert(subscriptions)
         .values({
-          id: `sub_${Date.now()}_${user.id}`,
+          id: paymentIntent.invoice?.subscription as string,
           userId: user.id,
           status: 'active',
           priceId,
+          stripeSubscriptionId: paymentIntent.invoice?.subscription as string,
           quantity: 1,
           cancelAtPeriodEnd: false,
-          currentPeriodStart: now,
-          currentPeriodEnd: endDate,
-          createdAt: now,
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: new Date(Date.now() + (plan === 'yearly' ? 365 : 30) * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
         });
+
+      // Update user's plan
+      await db
+        .update(users)
+        .set({
+          plan,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, user.id));
 
       return NextResponse.json({
         success: true,
         message: "Subscription updated successfully",
         plan,
-        user: {
-          id: user.id,
-          plan
+        subscription: {
+          id: paymentIntent.invoice?.subscription,
+          status: 'active',
+          currentPeriodEnd: new Date(Date.now() + (plan === 'yearly' ? 365 : 30) * 24 * 60 * 60 * 1000),
+          cancelAtPeriodEnd: false
         }
       });
     } catch (dbError) {
@@ -113,17 +130,9 @@ export async function POST(req: Request) {
       );
     }
   } catch (error) {
-    console.error("Error confirming payment:", {
-      error,
-      message: error instanceof Error ? error.message : "Unknown error",
-      stack: error instanceof Error ? error.stack : undefined
-    });
-    
+    console.error("Error processing payment confirmation:", error);
     return NextResponse.json(
-      { 
-        error: "Failed to confirm payment",
-        details: error instanceof Error ? error.message : "Unknown error"
-      },
+      { error: "Failed to process payment confirmation" },
       { status: 500 }
     );
   }
