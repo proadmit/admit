@@ -189,6 +189,30 @@ function CheckoutForm({
       }
 
       if (paymentIntent.status === "succeeded") {
+        console.log("Final payment details:", {
+          paymentIntentId: paymentIntent.id,
+          originalAmount: plan.price,
+          discountApplied: validCoupon
+            ? {
+                type: validCoupon.discountType,
+                value:
+                  validCoupon.discountType === "percent"
+                    ? `${validCoupon.discount}%`
+                    : `$${validCoupon.discount / 100}`,
+                calculatedDiscount:
+                  validCoupon.discountType === "percent"
+                    ? (plan.price * validCoupon.discount) / 100
+                    : validCoupon.discount / 100,
+              }
+            : null,
+          finalAmountCharged: paymentIntent.amount / 100,
+          currency: paymentIntent.currency.toUpperCase(),
+          status: paymentIntent.status,
+          subscriptionId: data.subscriptionId,
+          planName: plan.name,
+          planType: plan.period,
+        });
+
         try {
           // Update subscription
           const updateResponse = await fetch("/api/stripe/confirm-payment", {

@@ -27,7 +27,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    console.log("Creating payment intent for:", {
+    console.log("Creating payment intent with details:", {
       clerkId,
       userId: user.id,
       priceId,
@@ -52,8 +52,8 @@ export async function POST(req: Request) {
       });
     }
 
-    // Create subscription
-    const subscription = await stripe.subscriptions.create({
+    // Prepare subscription create parameters
+    const subscriptionParams: any = {
       customer: customer.id,
       items: [{ price: priceId }],
       payment_behavior: 'default_incomplete',
@@ -62,16 +62,44 @@ export async function POST(req: Request) {
         userId: user.id
       },
       expand: ['latest_invoice.payment_intent']
-    });
+    };
+
+    // If coupon ID is provided, validate and apply it
+    if (couponId) {
+      try {
+        // Verify the coupon exists and is valid
+        const coupon = await stripe.coupons.retrieve(couponId);
+        console.log("Applying coupon to subscription:", {
+          couponId,
+          discountType: coupon.amount_off ? 'fixed' : 'percentage',
+          discountValue: coupon.amount_off ? coupon.amount_off / 100 : coupon.percent_off
+        });
+
+        // Add coupon to subscription
+        subscriptionParams.coupon = couponId;
+      } catch (couponError) {
+        console.error("Error applying coupon:", couponError);
+        return NextResponse.json({ error: "Invalid coupon" }, { status: 400 });
+      }
+    }
+
+    // Create subscription with coupon if provided
+    const subscription = await stripe.subscriptions.create(subscriptionParams);
 
     const invoice = subscription.latest_invoice as any;
     const paymentIntent = invoice.payment_intent as any;
 
-    console.log("Created payment intent with metadata:", {
-      priceId,
-      userId: user.id,
+    console.log("Created subscription with payment details:", {
       subscriptionId: subscription.id,
-      clientSecret: paymentIntent.client_secret
+      priceId,
+      couponId,
+      originalAmount: subscription.items.data[0].price.unit_amount ? subscription.items.data[0].price.unit_amount / 100 : 0,
+      finalAmount: paymentIntent.amount / 100,
+      discount: subscription.discount ? {
+        couponId: subscription.discount.coupon.id,
+        amountOff: subscription.discount.coupon.amount_off ? subscription.discount.coupon.amount_off / 100 : null,
+        percentOff: subscription.discount.coupon.percent_off
+      } : null
     });
 
     return NextResponse.json({

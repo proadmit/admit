@@ -54,6 +54,31 @@ export async function POST(req: Request) {
       currentPeriodEnd: stripeSubscription.current_period_end
     });
 
+    // After retrieving the subscription:
+    console.log("Final subscription payment confirmation:", {
+      subscriptionId: stripeSubscription.id,
+      planType: priceId === PRICE_IDS.yearly ? 'yearly' : 'monthly',
+      originalAmount: stripeSubscription.items.data[0].price.unit_amount / 100,
+      discount: stripeSubscription.discount ? {
+        couponId: stripeSubscription.discount.coupon.id,
+        type: stripeSubscription.discount.coupon.amount_off ? 'fixed' : 'percentage',
+        value: stripeSubscription.discount.coupon.amount_off 
+          ? `$${stripeSubscription.discount.coupon.amount_off / 100}`
+          : `${stripeSubscription.discount.coupon.percent_off}%`,
+        amountOff: stripeSubscription.discount.coupon.amount_off ? stripeSubscription.discount.coupon.amount_off / 100 : null,
+        percentOff: stripeSubscription.discount.coupon.percent_off
+      } : null,
+      finalAmountBilled: stripeSubscription.items.data[0].price.unit_amount 
+        ? (stripeSubscription.items.data[0].price.unit_amount - 
+          (stripeSubscription.discount?.coupon.amount_off || 0)) / 100
+        : 0,
+      currency: stripeSubscription.currency.toUpperCase(),
+      interval: stripeSubscription.items.data[0].price.recurring?.interval,
+      status: stripeSubscription.status,
+      currentPeriodStart: new Date(stripeSubscription.current_period_start * 1000),
+      currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000)
+    });
+
     // Get user from database
     const userResult = await db
       .select()
