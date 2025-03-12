@@ -442,23 +442,68 @@ export default function DashboardPage() {
   const handleGenerateSupplementalEssay = async () => {
     try {
       setIsGeneratingSupplemental(true);
+
+      // Check if this is a second attempt for free users
+      if (plan === "free" && generationAttempts > 0) {
+        toast({
+          title: "Upgrade Required",
+          description:
+            "You've reached your free generation limit. Upgrade to Premium for unlimited generations!",
+          variant: "destructive",
+        });
+        router.push("/payment");
+        return;
+      }
+
       const response = await fetch("/api/generate-essay", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(supplementalForm),
+        body: JSON.stringify({
+          ...supplementalForm,
+          questionnaireData,
+          userInfo: {
+            gender: user?.unsafeMetadata?.gender,
+            country: user?.unsafeMetadata?.country,
+            major: user?.unsafeMetadata?.major,
+            academics: user?.unsafeMetadata?.academics,
+          },
+        }),
       });
 
       if (!response.ok) {
+        if (response.status === 403) {
+          const data = await response.json();
+          if (data.requiresUpgrade) {
+            toast({
+              title: "Upgrade Required",
+              description:
+                "You've reached your free generation limit. Upgrade to Premium for unlimited generations!",
+              variant: "destructive",
+            });
+            router.push("/payment");
+            return;
+          }
+        }
         throw new Error("Failed to generate essay");
       }
 
       const data = await response.json();
       setSupplementalEssay(data.essay);
+      setGenerationAttempts((prev) => prev + 1);
+
+      toast({
+        title: "Success",
+        description: "Supplemental essay generated successfully!",
+      });
     } catch (error) {
       console.error("Error generating essay:", error);
-      window.alert("Failed to generate essay. Please try again.");
+      toast({
+        title: "Error",
+        description: "Failed to generate essay. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsGeneratingSupplemental(false);
     }
@@ -809,6 +854,33 @@ export default function DashboardPage() {
                     {/* Blurred Content */}
                     <div className="blur-[2px] pointer-events-none">
                       <div className="space-y-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <span className="text-sm font-medium text-black">
+                              Major:
+                            </span>
+                            <div className="rounded-full bg-[#F3F4F6] px-6 py-2 text-sm text-black">
+                              {user?.unsafeMetadata?.major || "N/A"}
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <span className="text-sm font-medium text-black">
+                              Gender:
+                            </span>
+                            <div className="rounded-full bg-[#F3F4F6] px-6 py-2 text-sm text-black">
+                              {user?.unsafeMetadata?.gender || "N/A"}
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <span className="text-sm font-medium text-black">
+                              Country:
+                            </span>
+                            <div className="rounded-full bg-[#F3F4F6] px-6 py-2 text-sm text-black">
+                              {user?.unsafeMetadata?.country || "N/A"}
+                            </div>
+                          </div>
+                        </div>
+
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
                           <div className="w-full sm:w-[300px] space-y-2">
                             <span className="text-sm font-medium text-black">
@@ -841,37 +913,63 @@ export default function DashboardPage() {
                             disabled
                           />
                         </div>
-                        <button
-                          className="rounded-full bg-[#7C3AED] px-8 py-2 text-sm font-medium text-white opacity-50"
-                          disabled
-                        >
-                          GENERATE
-                        </button>
+                        <div className="flex justify-end">
+                          <Button
+                            className="rounded-full bg-[#7C3AED] text-white opacity-50"
+                            disabled
+                          >
+                            Generate
+                          </Button>
+                        </div>
                       </div>
                     </div>
 
                     {/* Upgrade Overlay */}
-                    <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center">
-                      <div className="bg-white p-6 rounded-lg shadow-lg text-center max-w-md">
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-[2px]">
+                      <div className="text-center">
                         <Lock className="w-12 h-12 text-[#7857FF] mx-auto mb-4" />
-                        <h3 className="text-xl font-semibold mb-2">
-                          Premium Feature
-                        </h3>
-                        <p className="text-gray-600 mb-4">
-                          Upgrade to Premium to generate AI-powered
-                          recommendation letters
+                        <p className="text-lg font-medium text-black mb-4">
+                          Upgrade to Premium to generate supplemental essays
                         </p>
                         <Button
-                          asChild
-                          className="bg-[#7857FF] hover:bg-[#6544FF] text-white rounded-full px-8"
+                          onClick={() => router.push("/payment")}
+                          className="rounded-full bg-[#7857FF] hover:bg-[#6544FF] text-white px-8"
                         >
-                          <Link href="/payment">Upgrade Now</Link>
+                          Upgrade Now
                         </Button>
                       </div>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-6">
+                    {/* User Information Display */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium text-black">
+                          Major:
+                        </span>
+                        <div className="rounded-full bg-[#F3F4F6] px-6 py-2 text-sm text-black">
+                          {user?.unsafeMetadata?.major || "N/A"}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium text-black">
+                          Gender:
+                        </span>
+                        <div className="rounded-full bg-[#F3F4F6] px-6 py-2 text-sm text-black">
+                          {user?.unsafeMetadata?.gender || "N/A"}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium text-black">
+                          Country:
+                        </span>
+                        <div className="rounded-full bg-[#F3F4F6] px-6 py-2 text-sm text-black">
+                          {user?.unsafeMetadata?.country || "N/A"}
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
                       <div className="w-full sm:w-[300px] space-y-2">
                         <span className="text-sm font-medium text-black">
@@ -922,57 +1020,71 @@ export default function DashboardPage() {
                         placeholder="Type..."
                       />
                     </div>
-                    <button
-                      onClick={handleGenerateSupplementalEssay}
-                      disabled={
-                        isGeneratingSupplemental ||
-                        !supplementalForm.university ||
-                        !supplementalForm.wordLimit ||
-                        !supplementalForm.prompt
-                      }
-                      className="rounded-full bg-[#7C3AED] px-8 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                    >
-                      {isGeneratingSupplemental ? "Generating..." : "GENERATE"}
-                    </button>
 
-                    {supplementalEssay && (
+                    {/* Generate Button Section */}
+                    <div className="flex justify-end">
+                      <Button
+                        onClick={() => {
+                          if (
+                            !supplementalForm.university ||
+                            !supplementalForm.wordLimit ||
+                            !supplementalForm.prompt
+                          ) {
+                            toast({
+                              title: "Error",
+                              description: "Please fill in all fields first",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          setShowQuestionnaire(true);
+                        }}
+                        className="rounded-full bg-[#7C3AED] text-white hover:opacity-90"
+                      >
+                        Generate
+                      </Button>
+                    </div>
+
+                    {/* Essay Display Section */}
+                    {isGeneratingSupplemental ? (
+                      <div className="rounded-[24px] border border-[#E5E7EB] bg-white p-6">
+                        <div className="mb-4 flex justify-end gap-2">
+                          <div className="rounded-full bg-[#F3F4F6] p-2">
+                            <RiFileCopyLine className="h-5 w-5 text-[#6B7280] opacity-50" />
+                          </div>
+                          <div className="rounded-full bg-[#F3F4F6] p-2">
+                            <CiRedo className="h-5 w-5 text-[#6B7280] opacity-50" />
+                          </div>
+                        </div>
+                        <Shimmer className="h-[300px] rounded-lg" />
+                      </div>
+                    ) : supplementalEssay ? (
                       <div className="rounded-[24px] border border-[#E5E7EB] bg-white p-6">
                         <div className="mb-4 flex justify-end gap-2">
                           <button
                             onClick={() => {
                               navigator.clipboard.writeText(supplementalEssay);
-                              window.alert("Essay copied to clipboard");
+                              toast({
+                                title: "Success",
+                                description: "Essay copied to clipboard",
+                              });
                             }}
                             className="rounded-full hover:bg-[#F3F4F6] p-2 transition-colors"
                           >
                             <RiFileCopyLine className="h-5 w-5 text-[#6B7280]" />
                           </button>
                           <button
-                            onClick={handleGenerateSupplementalEssay}
+                            onClick={() => setShowQuestionnaire(true)}
                             className="rounded-full hover:bg-[#F3F4F6] p-2 transition-colors"
                           >
-                            <svg
-                              width="20"
-                              height="20"
-                              viewBox="0 0 20 20"
-                              fill="none"
-                              xmlns="http://www.w3.org/2000/svg"
-                            >
-                              <path
-                                d="M4.5 2V5.5M4.5 5.5C6.5 3.5 9.5 3.5 11.5 5.5C13.5 7.5 13.5 10.5 11.5 12.5L4.5 19.5M4.5 5.5H1M15.5 18V14.5M15.5 14.5C13.5 16.5 10.5 16.5 8.5 14.5C6.5 12.5 6.5 9.5 8.5 7.5L15.5 0.5M15.5 14.5H19"
-                                stroke="#6B7280"
-                                strokeWidth="1.5"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
+                            <CiRedo className="h-5 w-5 text-[#6B7280]" />
                           </button>
                         </div>
                         <div className="min-h-[300px] whitespace-pre-wrap text-base leading-relaxed text-black">
                           {supplementalEssay}
                         </div>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 )}
               </div>
@@ -1403,7 +1515,7 @@ export default function DashboardPage() {
           <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col">
             <DialogHeader className="px-2">
               <DialogTitle className="text-xl font-semibold">
-                Help us understand you better
+                Help us personalize your supplemental essay
               </DialogTitle>
             </DialogHeader>
 
@@ -1518,11 +1630,19 @@ export default function DashboardPage() {
                   Cancel
                 </Button>
                 <Button
-                  onClick={handleGenerateWithQuestionnaire}
-                  disabled={isGenerating}
+                  onClick={async () => {
+                    setShowQuestionnaire(false);
+                    setIsGeneratingSupplemental(true);
+                    try {
+                      await handleGenerateSupplementalEssay();
+                    } finally {
+                      setIsGeneratingSupplemental(false);
+                    }
+                  }}
+                  disabled={isGeneratingSupplemental}
                   className="rounded-full bg-[#7C3AED] text-white hover:opacity-90"
                 >
-                  {isGenerating ? (
+                  {isGeneratingSupplemental ? (
                     <div className="flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Generating...
