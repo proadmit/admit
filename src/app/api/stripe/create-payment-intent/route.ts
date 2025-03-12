@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   try {
     await headers();
     const { userId: clerkId } = await auth();
-
+    
     const body = await req.json();
     const { priceId, couponId } = body;
 
@@ -91,7 +91,7 @@ export async function POST(req: Request) {
 
     console.log("Created subscription with payment details:", {
       subscriptionId: subscription.id,
-      priceId,
+        priceId,
       couponId,
       originalAmount: subscription.items.data[0].price.unit_amount ? subscription.items.data[0].price.unit_amount / 100 : 0,
       finalAmount: paymentIntent.amount / 100,
@@ -102,10 +102,10 @@ export async function POST(req: Request) {
       } : null
     });
 
-    return NextResponse.json({
-      clientSecret: paymentIntent.client_secret,
+      return NextResponse.json({
+        clientSecret: paymentIntent.client_secret,
       subscriptionId: subscription.id
-    });
+      });
   } catch (error) {
     console.error("Error creating payment intent:", error);
     return NextResponse.json(

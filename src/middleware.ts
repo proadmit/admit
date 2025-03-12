@@ -9,6 +9,8 @@ export default authMiddleware({
     "/auth/sign-in",
     "/auth/sign-up",
     "/api/stripe/webhook",
+    "/privacy-policy",
+    "/terms-of-use"
   ],
   // Routes that can always be accessed, and have
   // no authentication information
