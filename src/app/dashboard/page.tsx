@@ -598,10 +598,10 @@ export default function DashboardPage() {
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl text-muted-foreground font-bold">
-            AdmitApp Dashboard
+          <h1 className="text-2xl font-bold">
+            Admit App Dashboard
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm ">
             Current Plan:{" "}
             <span className="font-medium capitalize">{currentPlan}</span>
             {isLoadingSubscription && <span className="ml-2">Loading...</span>}
@@ -680,7 +680,7 @@ export default function DashboardPage() {
             {getPlanButton()}
           </div>
           <a
-            href="mailto:hello@admitapp.org"
+            href="mailto:hello@AdmitApp.org"
             className="rounded-full bg-[#E5E7EB] px-6 py-2 text-sm font-medium text-[#6B7280] hover:bg-[#D1D5DB] transition-colors inline-block text-center sm:text-left"
           >
             SUPPORT

@@ -214,10 +214,10 @@ export default function PrivacyPolicy() {
               To exercise any of these rights or if you have any privacy-related
               inquiries, please reach out to us at{" "}
               <a
-                href="mailto:hello@admitapp.org"
+                href="mailto:hello@AdmitApp.org"
                 className="text-blue-600 hover:text-blue-800"
               >
-                hello@admitapp.org
+                hello@AdmitApp.org
               </a>
               .
             </p>
@@ -236,10 +236,10 @@ export default function PrivacyPolicy() {
             <p className="text-gray-600">
               Email:{" "}
               <a
-                href="mailto:hello@admitapp.org"
+                href="mailto:hello@AdmitApp.org"
                 className="text-blue-600 hover:text-blue-800"
               >
-                hello@admitapp.org
+                hello@AdmitApp.org
               </a>
             </p>
             <p className="mt-6 text-gray-600">

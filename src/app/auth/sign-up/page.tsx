@@ -2,8 +2,8 @@ import { SignUp } from "@clerk/nextjs";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Sign Up - AdmitApp",
-  description: "Create your AdmitApp account",
+  title: "Sign Up - Admit App",
+  description: "Create your Admit App account",
 };
 
 export default function SignUpPage() {
