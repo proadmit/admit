@@ -490,11 +490,8 @@ export default function DashboardPage() {
       }
 
       const data = await response.json();
-      console.log('data.essay',data.essay)
       setSupplementalEssay(data.essay);
       setGenerationAttempts((prev) => prev + 1);
-
-      console.log('Success')
 
       toast({
         title: "Success",
@@ -1638,9 +1635,7 @@ export default function DashboardPage() {
                     setIsGeneratingSupplemental(true);
                     try {
                       await handleGenerateSupplementalEssay();
-                      console.log('handleGenerateSupplementalEssay')
                     } finally {
-                      console.log('setIsGeneratingSupplemental')
                       setIsGeneratingSupplemental(false);
                     }
                   }}
