@@ -29,15 +29,11 @@ export async function POST(req: Request) {
       userInfo 
     } = await req.json();
 
-    let data = { 
-      university : 'Default University', 
-      wordLimit : 500, 
-      prompt : 'Default Prompt',
+    return new NextResponse(JSON.stringify({  university, 
+      wordLimit, 
+      prompt,
       questionnaireData, 
-      userInfo 
-    };
-
-    return new NextResponse(JSON.stringify({ data }), {
+      userInfo }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
