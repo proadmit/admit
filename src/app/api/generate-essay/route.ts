@@ -13,34 +13,29 @@ export async function POST(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // const { 
-    //   university, 
-    //   wordLimit, 
-    //   prompt,
-    //   questionnaireData,
-    //   userInfo 
-    // } = await req.json();
-
-    const { 
-      university = 'Default University', 
-      wordLimit = 500, 
-      prompt = 'Default Prompt',
-      questionnaireData, 
+    let { 
+      university, 
+      wordLimit, 
+      prompt,
+      questionnaireData,
       userInfo 
     } = await req.json();
 
-    return new NextResponse(JSON.stringify({  university, 
-      wordLimit, 
-      prompt,
-      questionnaireData, 
-      userInfo }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    if(university == ""){
+      university = "Any University"
+    }
 
-    // if (!university || !wordLimit || !prompt) {
-    //   return new NextResponse("Missing required fields", { status: 400 });
-    // }
+    if(wordLimit == ""){
+      wordLimit = 500
+    }
+
+    if(prompt == ""){
+      prompt = "Same like previous prompts"
+    }
+
+    if (!university || !wordLimit || !prompt) {
+      return new NextResponse("Missing required fields", { status: 400 });
+    }
 
     const systemPrompt = `You are a highly skilled college admissions essay writer. Write a supplemental essay for ${university} with a word limit of ${wordLimit} words. The essay should be personal, engaging, and showcase the student's unique qualities.
 
@@ -104,7 +99,7 @@ Writing Guidelines:
   } catch (error) {
     console.error("Error generating essay:", error);
     return new NextResponse(
-      JSON.stringify({ error: "Failed to generate essay",data:error }),
+      JSON.stringify({ error: "Failed to generate essay" }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
