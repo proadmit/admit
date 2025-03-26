@@ -55,7 +55,7 @@ export default async function HomePage() {
                 </span>
               </h1>
               <ul className="space-y-2 text-gray-500 md:text-lg">
-                <li>• No AI Detection. Authentic & Standout Application</li>
+                <li>• AI-Powered Authentic Application</li>
                 <li>• Trained on +400 successful IVY League Applications</li>
               </ul>
               <Button
