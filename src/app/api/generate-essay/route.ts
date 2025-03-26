@@ -29,6 +29,19 @@ export async function POST(req: Request) {
       userInfo 
     } = await req.json();
 
+    let data = { 
+      university : 'Default University', 
+      wordLimit : 500, 
+      prompt : 'Default Prompt',
+      questionnaireData, 
+      userInfo 
+    };
+
+    return new NextResponse(JSON.stringify({ data }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+
     // if (!university || !wordLimit || !prompt) {
     //   return new NextResponse("Missing required fields", { status: 400 });
     // }
