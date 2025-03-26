@@ -95,7 +95,7 @@ Writing Guidelines:
   } catch (error) {
     console.error("Error generating essay:", error);
     return new NextResponse(
-      JSON.stringify({ error: "Failed to generate essay" }),
+      JSON.stringify({ error: "Failed to generate essay",data:error }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
