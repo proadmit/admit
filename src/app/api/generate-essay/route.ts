@@ -13,19 +13,11 @@ export async function POST(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // const { 
-    //   university, 
-    //   wordLimit, 
-    //   prompt,
-    //   questionnaireData,
-    //   userInfo 
-    // } = await req.json();
-
     const { 
-      university = 'Default University', 
-      wordLimit = 500, 
-      prompt = 'Default Prompt',
-      questionnaireData, 
+      university, 
+      wordLimit, 
+      prompt,
+      questionnaireData,
       userInfo 
     } = await req.json();
 
