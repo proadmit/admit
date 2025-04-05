@@ -441,7 +441,7 @@ export default function DashboardPage() {
 
   const handleGenerateSupplementalEssay = async () => {
     try {
-      setIsGenerating(true);
+      setIsGeneratingSupplemental(true);
 
       // Check if this is a second attempt for free users
       if (plan === "free" && generationAttempts > 0) {
@@ -505,7 +505,7 @@ export default function DashboardPage() {
         variant: "destructive",
       });
     } finally {
-      setIsGenerating(false);
+      setIsGeneratingSupplemental(false);
     }
   };
 
