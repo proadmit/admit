@@ -490,7 +490,7 @@ export default function DashboardPage() {
       }
 
       const data = await response.json();
-      setGeneratedEssay(data.essay);
+      setSupplementalEssay(data.essay);
       setGenerationAttempts((prev) => prev + 1);
 
       toast({
@@ -815,47 +815,31 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                 {/* Essay Display Section */}
-                 {isGenerating ? (
-                      <div className="rounded-[24px] border border-[#E5E7EB] bg-white p-6">
-                        <div className="mb-4 flex justify-end gap-2">
-                          <div className="rounded-full bg-[#F3F4F6] p-2">
-                            <RiFileCopyLine className="h-5 w-5 text-[#6B7280] opacity-50" />
-                          </div>
-                          <div className="rounded-full bg-[#F3F4F6] p-2">
-                            <CiRedo className="h-5 w-5 text-[#6B7280] opacity-50" />
-                          </div>
-                        </div>
-                        <Shimmer className="h-[300px] rounded-lg" />
-                      </div>
-                    ) : generatedEssay ? (
-                      <div className="rounded-[24px] border border-[#E5E7EB] bg-white p-6">
-                        <div className="mb-4 flex justify-end gap-2">
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(generatedEssay);
-                              toast({
-                                title: "Success",
-                                description: "Essay copied to clipboard",
-                              });
-                            }}
-                            className="rounded-full hover:bg-[#F3F4F6] p-2 transition-colors"
-                          >
-                            <RiFileCopyLine className="h-5 w-5 text-[#6B7280]" />
-                          </button>
-                          <button
-                            onClick={() => setShowQuestionnaire(true)}
-                            className="rounded-full hover:bg-[#F3F4F6] p-2 transition-colors"
-                          >
-                            <CiRedo className="h-5 w-5 text-[#6B7280]" />
-                          </button>
-                        </div>
-                        <div className="min-h-[300px] whitespace-pre-wrap text-base leading-relaxed text-black">
-                          {generatedEssay}
-                        </div>
-                      </div>
-                    ) : null}
-                    
+                {isGenerating ? (
+                  <div className="mt-6 rounded-lg border bg-white p-4">
+                    <Shimmer className="min-h-[300px]" />
+                  </div>
+                ) : generatedEssay ? (
+                  <div className="mt-6 rounded-lg border bg-white p-4">
+                    <div className="prose max-w-none">
+                      <p className="whitespace-pre-wrap">{generatedEssay}</p>
+                    </div>
+                    <div className="mt-4 flex items-center gap-2">
+                      <Button
+                        onClick={handleRegenerate}
+                        disabled={isGenerating}
+                      >
+                        Regenerate
+                      </Button>
+                      <Button onClick={handleCopy} variant="outline">
+                        Copy
+                      </Button>
+                      <Button onClick={handleClear} variant="outline">
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             )}
 
