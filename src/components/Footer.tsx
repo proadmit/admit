@@ -31,14 +31,14 @@ export function Footer() {
               <FaTelegram className="w-5 h-5" />
             </Link>
             <Link
-              href="mailto:hello@AdmitApp.org"
+              href="mailto:hello@admitapp.org"
               className="text-gray-600 hover:text-gray-900"
             >
               <MdEmail className="w-5 h-5" />
             </Link>
           </div>
           <div className="text-sm text-gray-600">
-            ©2025 Admit App. All rights reserved |{" "}
+            ©2025 AdmitApp. All rights reserved |{" "}
             <Link href="/privacy-policy" className="hover:text-gray-900">
               Privacy Policy
             </Link>{" "}

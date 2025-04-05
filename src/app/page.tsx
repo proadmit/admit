@@ -22,10 +22,10 @@ export default async function HomePage() {
   return (
     <>
       <div className="min-h-screen bg-white">
-        <div className="container mx-auto md:px-10 md:py-6 px-6 py-4">
+        <div className="container mx-auto p-10">
           {/* Header with Logo and Sign In */}
-          <div className="flex items-center justify-between mt-2 mb-8">
-            <div className="flex items-center md:space-x-3 space-x-2">
+          <div className="flex items-center justify-between mt-4 mb-12">
+            <div className="flex items-center space-x-3">
               <Image
                 src="/admit.png"
                 alt="Admit Avatar"
@@ -38,7 +38,7 @@ export default async function HomePage() {
             </div>
             <Link
               href="/auth/sign-in"
-              className="bg-gradient-to-r from-[#608aff] to-[#ba7dff] hover:opacity-90 text-white md:px-6 px-4 text-nowrap py-2 rounded-full"
+              className="bg-gradient-to-r from-[#608aff] to-[#ba7dff] hover:opacity-90 text-white px-6 py-2 rounded-full"
             >
               Sign In
             </Link>

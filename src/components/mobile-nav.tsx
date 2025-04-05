@@ -58,7 +58,7 @@ export function MobileNav() {
       </SheetTrigger>
       <SheetContent side="left" className="w-[300px] sm:w-[400px]">
         <Link href="/" className="flex items-center">
-          <span className="font-bold">Admit App</span>
+          <span className="font-bold">AdmitApp</span>
         </Link>
         <nav className="mt-8 flex flex-col space-y-3">
           {links.map((link) => {

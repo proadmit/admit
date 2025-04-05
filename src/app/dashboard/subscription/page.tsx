@@ -9,12 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createStripeSession } from "@/lib/stripe";
 
 export const metadata: Metadata = {
-  title: "Subscription - Admit App",
+  title: "Subscription - AdmitApp",
   description: "Manage your subscription",
 };
 
 export default async function SubscriptionPage() {
   const { userId } = auth();
+
 
   if (!userId) {
     redirect("/auth/sign-in");
