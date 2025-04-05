@@ -29,9 +29,9 @@ export async function POST(req: Request) {
       userInfo 
     } = await req.json();
 
-    // if (!university || !wordLimit || !prompt) {
-    //   return new NextResponse("Missing required fields", { status: 400 });
-    // }
+    if (!university || !wordLimit || !prompt) {
+      return new NextResponse("Missing required fields", { status: 400 });
+    }
 
     const systemPrompt = `You are a highly skilled college admissions essay writer. Write a supplemental essay for ${university} with a word limit of ${wordLimit} words. The essay should be personal, engaging, and showcase the student's unique qualities.
 
