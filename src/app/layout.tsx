@@ -5,9 +5,6 @@ import { Toaster } from "react-hot-toast";
 import { Toaster } from "@/components/ui/toast/toaster";
 import Footer from "@/components/Footer";
 <<<<<<< Updated upstream
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
