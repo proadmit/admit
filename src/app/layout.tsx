@@ -4,6 +4,9 @@ import { Toaster } from "react-hot-toast";
 =======
 import { Toaster } from "@/components/ui/toast/toaster";
 import Footer from "@/components/Footer";
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 import { Inter } from "next/font/google";
 import { QueryProvider } from "@/providers/query-provider";

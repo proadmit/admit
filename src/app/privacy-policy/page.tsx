@@ -215,15 +215,21 @@ export default function PrivacyPolicy() {
               inquiries, please reach out to us at{" "}
               <a
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 href="mailto:hello@admitapp.org"
                 className="text-blue-600 hover:text-blue-800"
               >
                 hello@admitapp.org
 =======
+=======
+>>>>>>> Stashed changes
                 href="mailto:hello@AdmitApp.org"
                 className="text-blue-600 hover:text-blue-800"
               >
                 hello@AdmitApp.org
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
               </a>
               .
@@ -244,15 +250,21 @@ export default function PrivacyPolicy() {
               Email:{" "}
               <a
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 href="mailto:hello@admitapp.org"
                 className="text-blue-600 hover:text-blue-800"
               >
                 hello@admitapp.org
 =======
+=======
+>>>>>>> Stashed changes
                 href="mailto:hello@AdmitApp.org"
                 className="text-blue-600 hover:text-blue-800"
               >
                 hello@AdmitApp.org
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
               </a>
             </p>
