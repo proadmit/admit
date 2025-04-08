@@ -1,4 +1,3 @@
-import { auth } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -10,13 +9,11 @@ import { IoPersonOutline } from "react-icons/io5";
 import { HiOutlineMail } from "react-icons/hi";
 import { RiFileTextLine } from "react-icons/ri";
 
-export default async function HomePage() {
-  const { userId } = auth();
+export default function HomePage() {
+  
 
   // If user is logged in, redirect to dashboard
-  if (userId) {
-    redirect("/dashboard");
-  }
+  
 
   return (
     <div className="min-h-screen bg-white">
