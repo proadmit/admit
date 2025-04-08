@@ -1,19 +1,35 @@
 import Link from "next/link";
+import { FaInstagram, FaTelegram, FaTiktok } from "react-icons/fa6";
+import { MdEmail } from "react-icons/md";
 
 export function Footer() {
   return (
-    <footer className="border-t py-6 text-center text-sm text-gray-600">
-      <div className="mb-2">
-        <Link href="https://instagram.com/admit.app" target="_blank">Instagram</Link>{" | "}
-        <Link href="https://tiktok.com/@admit.app" target="_blank">TikTok</Link>{" | "}
-        <Link href="https://t.me/AdmitApp" target="_blank">Telegram</Link>{" | "}
-        <Link href="mailto:hello@admitapp.org">Email</Link>
+    <footer className="border-t bg-[#f3f4f6]">
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex flex-col items-center justify-center space-y-4">
+          <div className="flex items-center space-x-4">
+            <Link href="https://instagram.com/admit.app" target="_blank" className="text-gray-600 hover:text-gray-900">
+              <FaInstagram className="w-5 h-5" />
+            </Link>
+            <Link href="https://tiktok.com/@admit.app" target="_blank" className="text-gray-600 hover:text-gray-900">
+              <FaTiktok className="w-5 h-5" />
+            </Link>
+            <Link href="https://t.me/AdmitApp" target="_blank" className="text-gray-600 hover:text-gray-900">
+              <FaTelegram className="w-5 h-5" />
+            </Link>
+            <Link href="mailto:hello@admitapp.org" className="text-gray-600 hover:text-gray-900">
+              <MdEmail className="w-5 h-5" />
+            </Link>
+          </div>
+          <div className="text-sm text-gray-600 text-center">
+            <p>&copy; 2025 AdmitApp. All rights reserved.</p>
+            <div className="flex justify-center gap-4 mt-1">
+              <Link href="/privacy-policy" className="hover:text-gray-900">Privacy Policy</Link>
+              <Link href="/terms-of-use" className="hover:text-gray-900">Terms of Use</Link>
+            </div>
+          </div>
+        </div>
       </div>
-      <div>
-        <Link href="/privacy-policy">Privacy Policy</Link>{" | "}
-        <Link href="/terms-of-use">Terms of Use</Link>
-      </div>
-      <p className="mt-2">&copy; 2025 AdmitApp. All rights reserved.</p>
     </footer>
   );
 }
