@@ -216,6 +216,7 @@ export default function PrivacyPolicy() {
               <a
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 href="mailto:hello@admitapp.org"
                 className="text-blue-600 hover:text-blue-800"
               >
@@ -223,11 +224,16 @@ export default function PrivacyPolicy() {
 =======
 =======
 >>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
                 href="mailto:hello@AdmitApp.org"
                 className="text-blue-600 hover:text-blue-800"
               >
                 hello@AdmitApp.org
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
@@ -251,6 +257,7 @@ export default function PrivacyPolicy() {
               <a
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 href="mailto:hello@admitapp.org"
                 className="text-blue-600 hover:text-blue-800"
               >
@@ -258,11 +265,16 @@ export default function PrivacyPolicy() {
 =======
 =======
 >>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
                 href="mailto:hello@AdmitApp.org"
                 className="text-blue-600 hover:text-blue-800"
               >
                 hello@AdmitApp.org
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
