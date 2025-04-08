@@ -118,7 +118,6 @@ export default function TermsOfUse() {
                   Subscription fees will be charged to the payment method you
                   provide. Subscriptions automatically renew at the end of each
                   billing cycle unless you cancel your subscription before the
-                  next renewal date. By subscribing, you authorize AdmitApp.org
                   (or our payment processor) to charge your selected payment
                   method on a recurring basis for the applicable subscription
                   fee. If you wish to stop your subscription, you may cancel at
@@ -264,7 +263,6 @@ export default function TermsOfUse() {
                   You agree to keep your password confidential and not to share
                   your account with anyone else. Any activity that occurs under
                   your account is your responsibility. If you suspect
-                  unauthorized access, you should reset your password
                   immediately and contact our support team.
                 </p>
               </div>

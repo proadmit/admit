@@ -155,7 +155,6 @@ export default function PrivacyPolicy() {
                 <p className="text-gray-600">
                   We use industry-standard safeguards, such as secure servers,
                   firewalls, and encryption methods, to help protect your data
-                  from unauthorized access. However, no internet-based service
                   can guarantee absolute security. We encourage you to keep your
                   account credentials secure.
                 </p>
