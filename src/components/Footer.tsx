@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { FaInstagram, FaTelegram } from "react-icons/fa6";
-import { FaTiktok } from "react-icons/fa";
+import { FaInstagram, FaTelegram, FaTiktok } from "react-icons/fa6";
 import { MdEmail } from "react-icons/md";
 
 export function Footer() {
@@ -9,67 +8,25 @@ export function Footer() {
       <div className="container mx-auto px-4 py-6">
         <div className="flex flex-col items-center justify-center space-y-4">
           <div className="flex items-center space-x-4">
-            <Link
-              href="https://instagram.com/admit.app"
-              target="_blank"
-              className="text-gray-600 hover:text-gray-900"
-            >
+            <Link href="https://instagram.com/admit.app" target="_blank" className="text-gray-600 hover:text-gray-900">
               <FaInstagram className="w-5 h-5" />
             </Link>
-            <Link
-              href="https://tiktok.com/@admit.app"
-              target="_blank"
-              className="text-gray-600 hover:text-gray-900"
-            >
+            <Link href="https://tiktok.com/@admit.app" target="_blank" className="text-gray-600 hover:text-gray-900">
               <FaTiktok className="w-5 h-5" />
             </Link>
-            <Link
-              href="https://t.me/AdmitApp"
-              target="_blank"
-              className="text-gray-600 hover:text-gray-900"
-            >
+            <Link href="https://t.me/AdmitApp" target="_blank" className="text-gray-600 hover:text-gray-900">
               <FaTelegram className="w-5 h-5" />
             </Link>
-            <Link
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-              href="mailto:hello@admitapp.org"
-=======
-              href="mailto:hello@AdmitApp.org"
->>>>>>> Stashed changes
-=======
-              href="mailto:hello@AdmitApp.org"
->>>>>>> Stashed changes
-=======
-              href="mailto:hello@AdmitApp.org"
->>>>>>> Stashed changes
-              className="text-gray-600 hover:text-gray-900"
-            >
+            <Link href="mailto:hello@admitapp.org" className="text-gray-600 hover:text-gray-900">
               <MdEmail className="w-5 h-5" />
             </Link>
           </div>
-          <div className="text-sm text-gray-600">
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-            ©2025 AdmitApp. All rights reserved |{" "}
-=======
-            ©2025 Admit App. All rights reserved |{" "}
->>>>>>> Stashed changes
-=======
-            ©2025 Admit App. All rights reserved |{" "}
->>>>>>> Stashed changes
-=======
-            ©2025 Admit App. All rights reserved |{" "}
->>>>>>> Stashed changes
-            <Link href="/privacy-policy" className="hover:text-gray-900">
-              Privacy Policy
-            </Link>{" "}
-            |{" "}
-            <Link href="/terms-of-use" className="hover:text-gray-900">
-              Terms of Use
-            </Link>
+          <div className="text-sm text-gray-600 text-center">
+            <p>&copy; 2025 AdmitApp. All rights reserved.</p>
+            <div className="flex justify-center gap-4 mt-1">
+              <Link href="/privacy-policy" className="hover:text-gray-900">Privacy Policy</Link>
+              <Link href="/terms-of-use" className="hover:text-gray-900">Terms of Use</Link>
+            </div>
           </div>
         </div>
       </div>
