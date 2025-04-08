@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 import { users, subscriptions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { sql } from "drizzle-orm";
-import { Footer } from "@/components/Footer";
 
 async function getUserInfo(clerkId: string) {
   try {
@@ -110,11 +109,10 @@ export default async function DashboardLayout({
     }
 
     return (
-      <div className="flex flex-col min-h-screen">
-        <div className="flex-grow bg-gray-100">
-          <main className="container mx-auto px-4 py-8">{children}</main>
-        </div>
-        <Footer />
+      <div className="min-h-screen bg-white">
+        <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+          {children}
+        </main>
       </div>
     );
   } catch (error) {

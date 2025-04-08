@@ -26,9 +26,6 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { User, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Checkbox } from "@/components/ui/checkbox";
-import Link from "next/link";
-import { showToast } from "@/lib/toast";
 
 const personalInfoSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -39,19 +36,15 @@ const personalInfoSchema = z.object({
   country: z.string().min(1, "Please select your country"),
   major: z.string().min(1, "Major is required"),
   achievements: z.string().optional(),
-  acceptedTerms: z.boolean().refine((val) => val === true, {
-    message: "You must accept the Terms of Use and Privacy Policy to continue",
-  }),
 });
 
 type PersonalInfoSchema = z.infer<typeof personalInfoSchema>;
 
-const allCountries = countries
-  .map((country) => ({
-    code: country.cca2, // Country Code (e.g., "US", "GB")
-    name: country.name.common, // Country Name (e.g., "United States", "United Kingdom")
-  }))
-  .sort((a, b) => a.name.localeCompare(b.name));
+const allCountries = countries.map((country) => ({
+  code: country.cca2, // Country Code (e.g., "US", "GB")
+  name: country.name.common, // Country Name (e.g., "United States", "United Kingdom")
+})).sort((a, b) => a.name.localeCompare(b.name));
+
 
 export default function PersonalInfoPage() {
   const router = useRouter();
@@ -86,7 +79,6 @@ export default function PersonalInfoPage() {
       country: "",
       major: "",
       achievements: "",
-      acceptedTerms: false,
     },
   });
 
@@ -120,13 +112,12 @@ export default function PersonalInfoPage() {
       }
 
       console.log("Success response:", result);
-      showToast.success("Personal information saved successfully");
 
       // Redirect to dashboard page
       router.push("/dashboard");
     } catch (error) {
       console.error("Failed to update personal info:", error);
-      showToast.error("Failed to save personal information. Please try again.");
+      // You might want to show this error to the user using a toast or alert
     } finally {
       setIsLoading(false);
     }
@@ -231,7 +222,7 @@ export default function PersonalInfoPage() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent className="max-h-60 overflow-y-auto">
-                      {allCountries.map((country) => (
+                    {allCountries.map((country) => (
                         <SelectItem key={country.code} value={country.code}>
                           {country.name}
                         </SelectItem>
@@ -279,42 +270,6 @@ export default function PersonalInfoPage() {
                     />
                   </FormControl>
                   <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="acceptedTerms"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel className="text-sm text-gray-600">
-                      I agree to the{" "}
-                      <Link
-                        href="/terms-of-use"
-                        className="text-primary hover:underline"
-                        target="_blank"
-                      >
-                        Terms of Use
-                      </Link>{" "}
-                      and{" "}
-                      <Link
-                        href="/privacy-policy"
-                        className="text-primary hover:underline"
-                        target="_blank"
-                      >
-                        Privacy Policy
-                      </Link>
-                    </FormLabel>
-                    <FormMessage />
-                  </div>
                 </FormItem>
               )}
             />

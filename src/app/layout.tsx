@@ -1,5 +1,5 @@
 import { ClerkProvider } from "@clerk/nextjs";
-import { Toaster } from "react-hot-toast";
+import { Toaster } from "@/components/ui/toast/toaster";
 import { Inter } from "next/font/google";
 import { QueryProvider } from "@/providers/query-provider";
 import "./globals.css";
@@ -22,7 +22,7 @@ export default function RootLayout({
         <body className={inter.className}>
           <QueryProvider>
             {children}
-            <Toaster position="top-center" />
+            <Toaster />
           </QueryProvider>
         </body>
       </html>
