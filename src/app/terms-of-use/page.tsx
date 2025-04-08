@@ -16,7 +16,6 @@ export default function TermsOfUse() {
             <p className="text-gray-600">
               Welcome to AdmitApp.org, an AI-powered platform designed to assist
               high school students with their college applications. These Terms
-<<<<<<< Updated upstream
               of Use ("Terms") govern your access to and use of the AdmitApp.org
               website and services (collectively, the "Platform"). By accessing
               or using the Platform, you agree to abide by these Terms. If you
@@ -24,16 +23,6 @@ export default function TermsOfUse() {
               AdmitApp.org. The Platform's purpose is to provide guidance and
               tools (including AI-generated content) to help you craft college
               application materials in a timely and effective manner.
-=======
-              of Use ("Terms") govern your access to and use of the Admit
-              App.org website and services (collectively, the "Platform"). By
-              accessing or using the Platform, you agree to abide by these
-              Terms. If you do not agree with any part of these Terms, please do
-              not use AdmitApp.org. The Platform's purpose is to provide
-              guidance and tools (including AI-generated content) to help you
-              craft college application materials in a timely and effective
-              manner.
->>>>>>> Stashed changes
             </p>
           </section>
 
@@ -191,13 +180,8 @@ export default function TermsOfUse() {
                 </h3>
                 <p className="text-gray-600">
                   The guidance and content from our AI do not constitute
-<<<<<<< Updated upstream
                   official educational, legal, or professional advice.
                   AdmitApp.org is not a substitute for speaking with a qualified
-=======
-                  official educational, legal, or professional advice. Admit
-                  App.org is not a substitute for speaking with a qualified
->>>>>>> Stashed changes
                   guidance counselor, teacher, admissions advisor, or legal
                   advisor. You should not rely on AI-generated content as your
                   sole source of information or advice. If you have serious
@@ -227,15 +211,9 @@ export default function TermsOfUse() {
                 <p className="text-gray-600">
                   Do not use the Platform for any unlawful purposes or to
                   further any illegal activity. You agree not to violate any
-<<<<<<< Updated upstream
                   applicable laws or regulations when accessing or using
                   AdmitApp.org. This includes (but is not limited to) refraining
                   from attempting to hack the Platform, misuse others' data, or
-=======
-                  applicable laws or regulations when accessing or using Admit
-                  App.org. This includes (but is not limited to) refraining from
-                  attempting to hack the Platform, misuse others' data, or
->>>>>>> Stashed changes
                   engage in fraud.
                 </p>
               </div>
@@ -368,17 +346,10 @@ export default function TermsOfUse() {
               <li className="text-gray-600">
                 • Email:{" "}
                 <a
-<<<<<<< Updated upstream
                   href="mailto:hello@admitapp.org"
                   className="text-blue-600 hover:text-blue-800"
                 >
                   hello@admitapp.org
-=======
-                  href="mailto:hello@AdmitApp.org"
-                  className="text-blue-600 hover:text-blue-800"
-                >
-                  hello@AdmitApp.org
->>>>>>> Stashed changes
                 </a>
               </li>
               <li className="text-gray-600">
