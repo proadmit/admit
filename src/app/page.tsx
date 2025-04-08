@@ -25,14 +25,13 @@ export default async function HomePage() {
         <div className="flex items-center justify-between mt-10 mb-20">
           <div className="flex items-center space-x-3">
             <Image
-              src="/admit.png"
+              <Image src="/admit.png" alt="Admit Logo" width={160} height={40} />
               alt="Admit Avatar"
               width={48}
               height={48}
               priority
               className="object-cover"
             />
-            <span className="text-4xl text-black/30 font-bold">admit</span>
           </div>
           <Link
             href="/auth/sign-in"
