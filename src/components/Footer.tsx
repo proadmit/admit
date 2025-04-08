@@ -32,11 +32,7 @@ export function Footer() {
             </Link>
             <Link
 <<<<<<< Updated upstream
-<<<<<<< Updated upstream
               href="mailto:hello@admitapp.org"
-=======
-              href="mailto:hello@AdmitApp.org"
->>>>>>> Stashed changes
 =======
               href="mailto:hello@AdmitApp.org"
 >>>>>>> Stashed changes
@@ -47,11 +43,7 @@ export function Footer() {
           </div>
           <div className="text-sm text-gray-600">
 <<<<<<< Updated upstream
-<<<<<<< Updated upstream
             ©2025 AdmitApp. All rights reserved |{" "}
-=======
-            ©2025 Admit App. All rights reserved |{" "}
->>>>>>> Stashed changes
 =======
             ©2025 Admit App. All rights reserved |{" "}
 >>>>>>> Stashed changes
