@@ -214,12 +214,29 @@ export default function PrivacyPolicy() {
               To exercise any of these rights or if you have any privacy-related
               inquiries, please reach out to us at{" "}
               <a
-
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 href="mailto:hello@admitapp.org"
                 className="text-blue-600 hover:text-blue-800"
               >
                 hello@admitapp.org
-
+=======
+=======
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
+                href="mailto:hello@AdmitApp.org"
+                className="text-blue-600 hover:text-blue-800"
+              >
+                hello@AdmitApp.org
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
               </a>
               .
             </p>
@@ -238,12 +255,29 @@ export default function PrivacyPolicy() {
             <p className="text-gray-600">
               Email:{" "}
               <a
-
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 href="mailto:hello@admitapp.org"
                 className="text-blue-600 hover:text-blue-800"
               >
                 hello@admitapp.org
-
+=======
+=======
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
+                href="mailto:hello@AdmitApp.org"
+                className="text-blue-600 hover:text-blue-800"
+              >
+                hello@AdmitApp.org
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
               </a>
             </p>
             <p className="mt-6 text-gray-600">

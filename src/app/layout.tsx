@@ -1,4 +1,5 @@
 import { ClerkProvider } from "@clerk/nextjs";
+import { Toaster } from "react-hot-toast";
 import { Toaster } from "@/components/ui/toast/toaster";
 import Footer from "@/components/Footer";
 import { Inter } from "next/font/google";
