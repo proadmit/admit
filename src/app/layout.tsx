@@ -1,10 +1,5 @@
 import { ClerkProvider } from "@clerk/nextjs";
-<<<<<<< Updated upstream
 import { Toaster } from "react-hot-toast";
-=======
-import { Toaster } from "@/components/ui/toast/toaster";
-import Footer from "@/components/Footer";
->>>>>>> Stashed changes
 import { Inter } from "next/font/google";
 import { QueryProvider } from "@/providers/query-provider";
 import "./globals.css";
@@ -29,7 +24,6 @@ export default function RootLayout({
             {children}
             <Toaster position="top-center" />
           </QueryProvider>
-          <Footer />
         </body>
       </html>
     </ClerkProvider>
